@@ -2,7 +2,7 @@
 import{useTransition}from'react'
 import{deleteEvent}from'./actions'
 
-export default function DeleteButton({eventId}){
+export default function DeleteButton({eventId}:{eventId:string}){
 const[pending,startTransition]=useTransition()
 
 const handleClick=()=>{

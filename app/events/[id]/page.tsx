@@ -1,7 +1,7 @@
 import{supabase}from'@/app/lib/supabase'
 import{notFound}from'next/navigation'
 
-export default async function EventPage(props){
+export default async function EventPage(props:any){
 const{id}=await props.params
 const{data:event}=await supabase.from('events').select('*').eq('id',id).single()
 if(!event)return notFound()
@@ -32,7 +32,7 @@ return(
 {event.description&&<p style={{fontSize:'14px',color:'#4b5563',lineHeight:1.75,marginBottom:'16px'}}>{event.description}</p>}
 {event.tags&&event.tags.length>0&&(
 <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'16px'}}>
-{event.tags.map((tag)=>(<span key={tag} style={{fontSize:'11px',padding:'3px 10px',background:'#f3f4f6',color:'#4b5563',border:'1px solid #e5e7eb',borderRadius:'20px'}}>#{tag}</span>))}
+{event.tags.map((tag:string)=>(<span key={tag} style={{fontSize:'11px',padding:'3px 10px',background:'#f3f4f6',color:'#4b5563',border:'1px solid #e5e7eb',borderRadius:'20px'}}>#{tag}</span>))}
 </div>
 )}
 <div style={{borderTop:'1px solid #f3f4f6',paddingTop:'20px',marginTop:'4px'}}>
@@ -48,7 +48,7 @@ View full album on Google Drive
 </div>
 {images&&images.length>0?(
 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:'10px'}}>
-{images.map((img)=>(
+{images.map((img:any)=>(
 <div key={img.id}>
 <img src={img.image_url} alt={img.caption||''} style={{width:'100%',aspectRatio:'4/3',objectFit:'cover',borderRadius:'6px',display:'block',border:'1px solid #f3f4f6'}}/>
 {img.caption&&<div style={{fontSize:'11px',color:'#9ca3af',marginTop:'4px',textAlign:'center'}}>{img.caption}</div>}

@@ -3,7 +3,7 @@ import{notFound}from'next/navigation'
 import{updateEvent,deleteEvent,deleteImage}from'./actions'
 import DeleteButton from'./DeleteButton'
 
-export default async function EditEventPage(props){
+export default async function EditEventPage(props:any){
 const{id}=await props.params
 const{data:event}=await supabase.from('events').select('*').eq('id',id).single()
 if(!event)return notFound()
@@ -68,7 +68,7 @@ return(
 <div style={{padding:'20px'}}>
 {images&&images.length>0?(
 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',gap:'12px'}}>
-{images.map((img)=>(
+{images.map((img:any)=>(
 <div key={img.id} style={{position:'relative'}}>
 <img src={img.image_url} alt={img.caption||''} style={{width:'100%',aspectRatio:'4/3',objectFit:'cover',borderRadius:'6px',display:'block'}}/>
 <form action={deleteImage} style={{position:'absolute',top:'4px',right:'4px'}}>

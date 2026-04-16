@@ -1,5 +1,6 @@
 import { supabase } from '@/app/lib/supabase'
 
+// @ts-ignore
 export default async function CalendarPage() {
   const today = new Date()
   const year = today.getFullYear()
