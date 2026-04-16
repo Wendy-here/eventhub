@@ -2,7 +2,7 @@
 import{supabase}from'@/app/lib/supabase'
 import{redirect}from'next/navigation'
 
-export async function updateEvent(formData){
+export async function updateEvent(formData:FormData){
 const id=formData.get('id')
 const title=formData.get('title')
 const date=formData.get('date')
@@ -16,7 +16,7 @@ if(error)console.error(error)
 redirect('/events/'+id)
 }
 
-export async function deleteEvent(formData){
+export async function deleteEvent(formData:FormData){
 const id=formData.get('id')
 const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id)
 if(images&&images.length>0){
@@ -28,7 +28,7 @@ await supabase.from('events').delete().eq('id',id)
 redirect('/')
 }
 
-export async function deleteImage(formData){
+export async function deleteImage(formData:FormData){
 const imageId=formData.get('image_id')
 const eventId=formData.get('event_id')
 const imageUrl=formData.get('image_url')

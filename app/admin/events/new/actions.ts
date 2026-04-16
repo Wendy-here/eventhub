@@ -1,7 +1,7 @@
 'use server'
 import{supabase}from'@/app/lib/supabase'
 import{redirect}from'next/navigation'
-export async function createEvent(formData){
+export async function createEvent(formData:FormData){
 const title=formData.get('title')
 const date=formData.get('date')
 const description=formData.get('description')
