@@ -1,6 +1,4 @@
-const fs = require('fs')
-
-const code = `import{supabase}from'@/app/lib/supabase'
+import{supabase}from'@/app/lib/supabase'
 import{isAdmin}from'@/app/lib/roles'
 
 export default async function EventsPage(){
@@ -49,8 +47,4 @@ No events yet
 </div>
 </div>
 )
-}`
-
-fs.mkdirSync('app/events', {recursive: true})
-fs.writeFileSync('app/events/page.tsx', code)
-console.log('Done!')
+}
