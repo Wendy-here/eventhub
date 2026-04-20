@@ -11,7 +11,7 @@ const handleLogin=async()=>{
 const{data,error}=await supabase.auth.signInWithOAuth({
 provider:'google',
 options:{
-redirectTo:'http://localhost:3000/auth/callback',
+redirectTo:'https://eventhub-ruddy.vercel.app/auth/callback',
 queryParams:{hd:'gradion.com'}
 }
 })
