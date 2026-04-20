@@ -33,10 +33,7 @@ return(
 <header style={{background:'#ffffff',borderBottom:'1px solid #E5E7EB',position:'sticky',top:0,zIndex:50}}>
 <div style={{maxWidth:'1200px',margin:'0 auto',padding:'0 24px',height:'52px',display:'flex',alignItems:'center',gap:'12px'}}>
 
-<div style={{display:'flex',flexDirection:'column',lineHeight:1}}>
-<span style={{fontSize:'16px',fontWeight:700,color:'#FF6B00',letterSpacing:'-.3px'}}>GRADION</span>
-<span style={{fontSize:'9px',color:'#9CA3AF',letterSpacing:'.12em',textTransform:'uppercase',marginTop:'1px'}}>scaling business</span>
-</div>
+<img src='https://jkefwcttcszndeebgkch.supabase.co/storage/v1/object/public/assets/gradion-logo.png' alt='Gradion' style={{height:'28px',width:'auto'}}/>
 <div style={{width:'1px',height:'26px',background:'#E5E7EB',margin:'0 4px',flexShrink:0}}/>
 <span style={{fontSize:'13px',fontWeight:600,color:'#1A1A1A',marginRight:'4px'}}>Wall</span>
 <div style={{width:'1px',height:'26px',background:'#E5E7EB',margin:'0 4px',flexShrink:0}}/>
@@ -45,6 +42,7 @@ return(
 <a href='/' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>Calendar</a>
 <a href='/events' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>All Events</a>
 <a href='/images' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>Images</a>
+<a href='/admin/categories' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>Categories</a>
 </nav>
 
 <div style={{flex:1}}/>

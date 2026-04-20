@@ -24,8 +24,7 @@ return(
 <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#FAFAFA'}}>
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'40px',width:'100%',maxWidth:'360px',textAlign:'center'}}>
 <div style={{marginBottom:'20px'}}>
-<div style={{fontSize:'26px',fontWeight:700,color:'#FF6B00',letterSpacing:'-.5px',lineHeight:1}}>GRADION</div>
-<div style={{fontSize:'10px',color:'#9CA3AF',letterSpacing:'.12em',textTransform:'uppercase',marginTop:'3px'}}>scaling business</div>
+<img src='https://jkefwcttcszndeebgkch.supabase.co/storage/v1/object/public/assets/gradion-logo.png' alt='Gradion' style={{height:'36px',width:'auto',display:'block',margin:'0 auto'}}/>
 </div>
 <div style={{width:'1px',height:'16px',background:'#E5E7EB',margin:'0 auto 16px'}}/>
 <div style={{fontSize:'16px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px'}}>Gradion Wall</div>
