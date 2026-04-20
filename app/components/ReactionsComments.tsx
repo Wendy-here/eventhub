@@ -1,6 +1,4 @@
-const fs = require('fs')
-
-const code = `'use client'
+'use client'
 import{useState,useEffect,useRef}from'react'
 import{supabase}from'@/app/lib/supabase'
 
@@ -195,7 +193,4 @@ style={{flex:1,border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',
 
 </div>
 )
-}`
-
-fs.writeFileSync('app/components/ReactionsComments.tsx', code)
-console.log('Done!')
+}
