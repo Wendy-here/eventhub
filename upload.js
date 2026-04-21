@@ -1,39 +1,278 @@
 const fs = require('fs')
 
-const middleware = `import{createServerClient}from'@supabase/ssr'
-import{NextResponse}from'next/server'
+// FIX 1: FilterBar — load categories directly from Supabase instead of broken API
+const filterBar = `'use client'
+import{useRouter,useSearchParams}from'next/navigation'
+import{useCallback,useEffect,useState}from'react'
+import{supabase}from'@/app/lib/supabase'
 
-export const runtime='edge'
-
-export async function middleware(request:any){
-const{pathname}=request.nextUrl
-
-if(
-pathname.startsWith('/auth')||
-pathname.startsWith('/_next')||
-pathname.startsWith('/api')||
-pathname.includes('.')
-)return NextResponse.next({request})
-
-const response=NextResponse.next({request})
-
-const supabase=createServerClient(
-process.env.NEXT_PUBLIC_SUPABASE_URL!,
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-{cookies:{getAll(){return request.cookies.getAll()},setAll(c:any){c.forEach(({name,value,options}:any)=>response.cookies.set(name,value,options))}}}
-)
-
-const{data:{user}}=await supabase.auth.getUser()
-
-if(pathname==='/login')return response
-if(!user)return NextResponse.redirect(new URL('/login',request.url))
-if(!user.email?.endsWith('@gradion.com'))return NextResponse.redirect(new URL('/login?error=unauthorized',request.url))
-
-return response
+const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
+const OFFICES:Record<string,string[]>={
+Vietnam:['Saigon','Hanoi','Can Tho'],
+Thailand:['Bangkok'],
+Egypt:['Cairo'],
+Germany:['Berlin'],
 }
 
-export const config={matcher:['/((?!_next/static|_next/image|favicon.ico).*)']}
-`
+export default function FilterBar(){
+const router=useRouter()
+const sp=useSearchParams()
+const category=sp.get('category')||''
+const entity=sp.get('entity')||''
+const office=sp.get('office')||''
+const search=sp.get('search')||''
+const year=sp.get('year')||''
+const month=sp.get('month')||''
+const[categories,setCategories]=useState<{id:string,name:string}[]>([])
 
-fs.writeFileSync('middleware.ts', middleware)
-console.log('done')
+useEffect(()=>{
+supabase.from('categories').select('id,name').order('name').then(({data})=>{
+if(data)setCategories(data)
+})
+},[])
+
+const buildUrl=useCallback((params:Record<string,string>)=>{
+const base:Record<string,string>={}
+if(year)base.year=year
+if(month)base.month=month
+if(search)base.search=search
+if(category)base.category=category
+if(entity)base.entity=entity
+if(office)base.office=office
+Object.assign(base,params)
+Object.keys(base).forEach(k=>{if(!base[k])delete base[k]})
+const qs=Object.entries(base).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&')
+return qs?'/?'+qs:'/'
+},[year,month,search,category,entity,office])
+
+const officesForEntity=entity?OFFICES[entity]||[]:[]
+const hasFilters=!!(category||entity||office)
+
+const sel=(active:boolean)=>({
+height:'28px',padding:'0 8px',
+border:'1px solid '+(active?'#FF6B00':'#E5E7EB'),
+borderRadius:'6px',
+background:active?'#FFF3EB':'#ffffff',
+color:active?'#FF6B00':'#374151',
+fontSize:'12px',fontFamily:'Noto Sans,sans-serif',
+cursor:'pointer',outline:'none',
+fontWeight:active?600:400
+} as React.CSSProperties)
+
+return(
+<div style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 24px',height:'42px',display:'flex',alignItems:'center',gap:'8px'}}>
+<span style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'.06em',marginRight:'4px'}}>Filter:</span>
+<select value={category} style={sel(!!category)} onChange={(e)=>router.push(buildUrl({category:e.target.value,office:''}))}>
+<option value=''>All categories</option>
+{categories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+</select>
+<select value={entity} style={sel(!!entity)} onChange={(e)=>router.push(buildUrl({entity:e.target.value,office:''}))}>
+<option value=''>All entities</option>
+{ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
+</select>
+{entity&&officesForEntity.length>0&&(
+<select value={office} style={sel(!!office)} onChange={(e)=>router.push(buildUrl({office:e.target.value}))}>
+<option value=''>All offices</option>
+{officesForEntity.map(o=><option key={o} value={o}>{o}</option>)}
+</select>
+)}
+{hasFilters&&(
+<button onClick={()=>router.push(buildUrl({category:'',entity:'',office:''}))} style={{fontSize:'11.5px',color:'#6B7280',background:'none',border:'none',cursor:'pointer',fontFamily:'Noto Sans,sans-serif',marginLeft:'4px'}}>
+Clear filters ×
+</button>
+)}
+</div>
+)
+}`
+
+// FIX 2: Edit page — add category, entity, office fields
+const editActions = `'use server'
+import{supabase}from'@/app/lib/supabase'
+import{redirect}from'next/navigation'
+
+export async function updateEvent(formData:FormData){
+const id=formData.get('id') as string
+const title=formData.get('title') as string
+const date=formData.get('date') as string
+const description=formData.get('description') as string
+const location=formData.get('location') as string
+const drive_link=formData.get('drive_link') as string
+const category=formData.get('category') as string
+const entity=formData.get('entity') as string
+const office=formData.get('office') as string
+const tagsRaw=formData.get('tags') as string
+const tags=tagsRaw?tagsRaw.split(',').map((t:string)=>t.trim()).filter(Boolean):[]
+const{error}=await supabase.from('events').update({
+title,date,description,location,tags,
+drive_link:drive_link||null,
+category:category||null,
+entity:entity||null,
+office:office||null
+}).eq('id',id)
+if(error)console.error(error)
+redirect('/events/'+id)
+}
+
+export async function deleteEvent(formData:FormData){
+const id=formData.get('id') as string
+const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id)
+if(images&&images.length>0){
+const paths=images.map((img:any)=>{const parts=img.image_url.split('/event-images/');return parts[1]||''}).filter(Boolean)
+if(paths.length>0)await supabase.storage.from('event-images').remove(paths)
+}
+await supabase.from('event_images').delete().eq('event_id',id)
+await supabase.from('events').delete().eq('id',id)
+redirect('/')
+}
+
+export async function deleteImage(formData:FormData){
+const imageId=formData.get('image_id') as string
+const eventId=formData.get('event_id') as string
+const imageUrl=formData.get('image_url') as string
+const parts=(imageUrl||'').split('/event-images/')
+if(parts[1])await supabase.storage.from('event-images').remove([parts[1]])
+await supabase.from('event_images').delete().eq('id',imageId)
+redirect('/events/'+eventId+'/edit')
+}`
+
+const editPage = `import{supabase}from'@/app/lib/supabase'
+import{notFound}from'next/navigation'
+import{updateEvent,deleteEvent,deleteImage}from'./actions'
+import DeleteButton from'./DeleteButton'
+
+const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
+const OFFICES:Record<string,string[]>={
+Vietnam:['Saigon','Hanoi','Can Tho'],
+Thailand:['Bangkok'],
+Egypt:['Cairo'],
+Germany:['Berlin'],
+}
+
+export default async function EditEventPage(props:any){
+const{id}=await props.params
+const{data:event}=await supabase.from('events').select('*').eq('id',id).single()
+if(!event)return notFound()
+const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id).order('sort_order')
+const{data:categories}=await supabase.from('categories').select('id,name').order('name')
+const tagsStr=event.tags?event.tags.join(', '):''
+
+const inp={width:'100%',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',color:'#1A1A1A',background:'#ffffff'}
+
+return(
+<div style={{padding:'20px 24px',maxWidth:'680px',margin:'0 auto'}}>
+<div style={{marginBottom:'20px'}}>
+<h1 style={{fontSize:'21px',fontWeight:700,color:'#1A1A1A',margin:0}}>Edit event</h1>
+<p style={{fontSize:'12.5px',color:'#6B7280',marginTop:'4px',marginBottom:0}}>{event.title}</p>
+</div>
+
+<form action={updateEvent}>
+<input type='hidden' name='id' value={id}/>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
+<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
+<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Event details</div>
+</div>
+<div style={{padding:'18px',display:'flex',flexDirection:'column',gap:'14px'}}>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Event title *</label>
+<input name='title' required defaultValue={event.title} style={inp}/>
+</div>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Date *</label>
+<input name='date' type='date' required defaultValue={event.date} style={inp}/>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Location</label>
+<input name='location' defaultValue={event.location||''} style={inp}/>
+</div>
+</div>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Category</label>
+<select name='category' defaultValue={event.category||''} style={{...inp,cursor:'pointer'}}>
+<option value=''>Select...</option>
+{categories?.map((c:any)=><option key={c.id} value={c.name}>{c.name}</option>)}
+</select>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Entity</label>
+<select name='entity' defaultValue={event.entity||''} style={{...inp,cursor:'pointer'}}>
+<option value=''>Select...</option>
+{ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
+</select>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Office</label>
+<select name='office' defaultValue={event.office||''} style={{...inp,cursor:'pointer'}}>
+<option value=''>Select...</option>
+{Object.values(OFFICES).flat().map(o=><option key={o} value={o}>{o}</option>)}
+</select>
+</div>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Tags</label>
+<input name='tags' defaultValue={tagsStr} placeholder='team-building, q2-2026' style={inp}/>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Google Drive album link</label>
+<input name='drive_link' defaultValue={event.drive_link||''} placeholder='https://drive.google.com/drive/folders/...' style={inp}/>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Description</label>
+<textarea name='description' rows={4} defaultValue={event.description||''} style={{...inp,resize:'vertical' as const}}/>
+</div>
+<div style={{display:'flex',justifyContent:'flex-end',paddingTop:'8px',borderTop:'1px solid #F3F4F6'}}>
+<button type='submit' style={{background:'#FF6B00',color:'#fff',border:'none',padding:'9px 18px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:'pointer',fontFamily:'Noto Sans,sans-serif'}}>Save changes</button>
+</div>
+</div>
+</form>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
+<div style={{background:'#1A1A1A',padding:'12px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Preview images</div>
+<a href={'/events/'+id+'/upload'} style={{fontSize:'12px',background:'#FF6B00',color:'#fff',padding:'4px 12px',borderRadius:'5px',textDecoration:'none',fontWeight:500}}>+ Add more</a>
+</div>
+<div style={{padding:'16px'}}>
+{images&&images.length>0?(
+<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))',gap:'10px'}}>
+{images.map((img:any)=>(
+<div key={img.id} style={{position:'relative'}}>
+<img src={img.image_url} alt={img.caption||''} style={{width:'100%',aspectRatio:'4/3',objectFit:'cover',borderRadius:'6px',display:'block'}}/>
+<form action={deleteImage} style={{position:'absolute',top:'4px',right:'4px'}}>
+<input type='hidden' name='image_id' value={img.id}/>
+<input type='hidden' name='event_id' value={id}/>
+<input type='hidden' name='image_url' value={img.image_url}/>
+<button type='submit' style={{background:'rgba(220,38,38,.85)',color:'#fff',border:'none',borderRadius:'50%',width:'22px',height:'22px',cursor:'pointer',fontSize:'11px'}}>×</button>
+</form>
+</div>
+))}
+</div>
+):(
+<div style={{padding:'24px',textAlign:'center',color:'#9CA3AF',fontSize:'13px'}}>No images yet</div>
+)}
+</div>
+</div>
+
+<div style={{background:'#fff',border:'1px solid #FEE2E2',borderRadius:'12px',overflow:'hidden'}}>
+<div style={{padding:'14px 18px',borderBottom:'1px solid #FEE2E2'}}>
+<div style={{fontSize:'13px',fontWeight:600,color:'#DC2626'}}>Danger zone</div>
+<div style={{fontSize:'12px',color:'#9CA3AF',marginTop:'2px'}}>This cannot be undone</div>
+</div>
+<div style={{padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+<div>
+<div style={{fontSize:'13px',fontWeight:500,color:'#374151'}}>Delete this event</div>
+<div style={{fontSize:'12px',color:'#9CA3AF'}}>Removes the event and all images permanently</div>
+</div>
+<DeleteButton eventId={id}/>
+</div>
+</div>
+
+</div>
+)
+}`
+
+fs.writeFileSync('app/components/FilterBar.tsx', filterBar)
+fs.writeFileSync('app/events/[id]/edit/actions.ts', editActions)
+fs.writeFileSync('app/events/[id]/edit/page.tsx', editPage)
+console.log('All fixes written!')
