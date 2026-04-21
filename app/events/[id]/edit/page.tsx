@@ -18,7 +18,6 @@ if(!event)return notFound()
 const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id).order('sort_order')
 const{data:categories}=await supabase.from('categories').select('id,name').order('name')
 const tagsStr=event.tags?event.tags.join(', '):''
-
 const inp={width:'100%',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',color:'#1A1A1A',background:'#ffffff'}
 
 return(
@@ -30,19 +29,18 @@ return(
 
 <form action={updateEvent}>
 <input type='hidden' name='id' value={id}/>
-
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
 <div style={{background:'#1A1A1A',padding:'12px 18px'}}>
 <div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Event details</div>
 </div>
 <div style={{padding:'18px',display:'flex',flexDirection:'column',gap:'14px'}}>
 <div>
-<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Event title *</label>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Event title</label>
 <input name='title' required defaultValue={event.title} style={inp}/>
 </div>
 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
 <div>
-<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Date *</label>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Date</label>
 <input name='date' type='date' required defaultValue={event.date} style={inp}/>
 </div>
 <div>
@@ -55,21 +53,27 @@ return(
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Category</label>
 <select name='category' defaultValue={event.category||''} style={{...inp,cursor:'pointer'}}>
 <option value=''>Select...</option>
-{categories?.map((c:any)=><option key={c.id} value={c.name}>{c.name}</option>)}
+{categories?.map((c:any)=>(
+<option key={c.id} value={c.name}>{c.name}</option>
+))}
 </select>
 </div>
 <div>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Entity</label>
 <select name='entity' defaultValue={event.entity||''} style={{...inp,cursor:'pointer'}}>
 <option value=''>Select...</option>
-{ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
+{ENTITIES.map(e=>(
+<option key={e} value={e}>{e}</option>
+))}
 </select>
 </div>
 <div>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Office</label>
 <select name='office' defaultValue={event.office||''} style={{...inp,cursor:'pointer'}}>
 <option value=''>Select...</option>
-{Object.values(OFFICES).flat().map(o=><option key={o} value={o}>{o}</option>)}
+{Object.values(OFFICES).flat().map(o=>(
+<option key={o} value={o}>{o}</option>
+))}
 </select>
 </div>
 </div>
@@ -89,6 +93,7 @@ return(
 <button type='submit' style={{background:'#FF6B00',color:'#fff',border:'none',padding:'9px 18px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:'pointer',fontFamily:'Noto Sans,sans-serif'}}>Save changes</button>
 </div>
 </div>
+</div>
 </form>
 
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
@@ -106,13 +111,13 @@ return(
 <input type='hidden' name='image_id' value={img.id}/>
 <input type='hidden' name='event_id' value={id}/>
 <input type='hidden' name='image_url' value={img.image_url}/>
-<button type='submit' style={{background:'rgba(220,38,38,.85)',color:'#fff',border:'none',borderRadius:'50%',width:'22px',height:'22px',cursor:'pointer',fontSize:'11px'}}>×</button>
+<button type='submit' style={{background:'rgba(220,38,38,.85)',color:'#fff',border:'none',borderRadius:'50%',width:'22px',height:'22px',cursor:'pointer',fontSize:'11px'}}>x</button>
 </form>
 </div>
 ))}
 </div>
 ):(
-<div style={{padding:'24px',textAlign:'center',color:'#9CA3AF',fontSize:'13px'}}>No images yet</div>
+<div style={{padding:'24px',textAlign:'center' as const,color:'#9CA3AF',fontSize:'13px'}}>No images yet</div>
 )}
 </div>
 </div>
