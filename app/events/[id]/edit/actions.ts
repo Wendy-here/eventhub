@@ -1,7 +1,12 @@
 'use server'
-import{supabase}from'@/app/lib/supabase'
+import{createClient}from'@supabase/supabase-js'
 import{redirect}from'next/navigation'
 import{revalidatePath}from'next/cache'
+
+const supabase=createClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export async function updateEvent(formData:FormData){
 const id=formData.get('id') as string
@@ -22,11 +27,10 @@ category:category||null,
 entity:entity||null,
 office:office||null
 }).eq('id',id)
-if(error)console.error(error)
+if(error){console.error('update error:',error);return}
 revalidatePath('/')
 revalidatePath('/events')
 revalidatePath('/events/'+id)
-revalidatePath('/events/'+id+'/edit')
 redirect('/events/'+id)
 }
 
@@ -52,6 +56,5 @@ const parts=(imageUrl||'').split('/event-images/')
 if(parts[1])await supabase.storage.from('event-images').remove([parts[1]])
 await supabase.from('event_images').delete().eq('id',imageId)
 revalidatePath('/events/'+eventId)
-revalidatePath('/events/'+eventId+'/edit')
 redirect('/events/'+eventId+'/edit')
 }
