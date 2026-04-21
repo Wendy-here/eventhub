@@ -1,3 +1,4 @@
+export const revalidate=60
 import{supabase}from'@/app/lib/supabase'
 import{isAdmin}from'@/app/lib/roles'
 

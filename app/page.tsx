@@ -1,3 +1,4 @@
+export const revalidate=60
 import{supabase}from'@/app/lib/supabase'
 import{Suspense}from'react'
 import FilterBar from'@/app/components/FilterBar'

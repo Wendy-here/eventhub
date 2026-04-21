@@ -1,3 +1,4 @@
+export const revalidate=60
 import{supabase}from'@/app/lib/supabase'
 
 export default async function ImagesPage(){
