@@ -1,13 +1,19 @@
 import{createServerClient}from'@supabase/ssr'
 import{NextResponse}from'next/server'
 
+export const runtime='edge'
+
 export async function middleware(request:any){
 const{pathname}=request.nextUrl
-const response=NextResponse.next({request})
 
-if(pathname.startsWith('/auth'))return response
-if(pathname.startsWith('/_next'))return response
-if(pathname.startsWith('/api'))return response
+if(
+pathname.startsWith('/auth')||
+pathname.startsWith('/_next')||
+pathname.startsWith('/api')||
+pathname.includes('.')
+)return NextResponse.next({request})
+
+const response=NextResponse.next({request})
 
 const supabase=createServerClient(
 process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +24,6 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 const{data:{user}}=await supabase.auth.getUser()
 
 if(pathname==='/login')return response
-
 if(!user)return NextResponse.redirect(new URL('/login',request.url))
 if(!user.email?.endsWith('@gradion.com'))return NextResponse.redirect(new URL('/login?error=unauthorized',request.url))
 

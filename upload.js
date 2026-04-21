@@ -1,27 +1,39 @@
 const fs = require('fs')
 
-// Add revalidate to calendar page
-let calendar = fs.readFileSync('app/page.tsx', 'utf8')
-if(!calendar.includes('revalidate')){
-  calendar = `export const revalidate=60\n` + calendar
-  fs.writeFileSync('app/page.tsx', calendar)
-  console.log('Calendar cached!')
+const middleware = `import{createServerClient}from'@supabase/ssr'
+import{NextResponse}from'next/server'
+
+export const runtime='edge'
+
+export async function middleware(request:any){
+const{pathname}=request.nextUrl
+
+if(
+pathname.startsWith('/auth')||
+pathname.startsWith('/_next')||
+pathname.startsWith('/api')||
+pathname.includes('.')
+)return NextResponse.next({request})
+
+const response=NextResponse.next({request})
+
+const supabase=createServerClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+{cookies:{getAll(){return request.cookies.getAll()},setAll(c:any){c.forEach(({name,value,options}:any)=>response.cookies.set(name,value,options))}}}
+)
+
+const{data:{user}}=await supabase.auth.getUser()
+
+if(pathname==='/login')return response
+if(!user)return NextResponse.redirect(new URL('/login',request.url))
+if(!user.email?.endsWith('@gradion.com'))return NextResponse.redirect(new URL('/login?error=unauthorized',request.url))
+
+return response
 }
 
-// Add revalidate to events page
-let events = fs.readFileSync('app/events/page.tsx', 'utf8')
-if(!events.includes('revalidate')){
-  events = `export const revalidate=60\n` + events
-  fs.writeFileSync('app/events/page.tsx', events)
-  console.log('Events cached!')
-}
+export const config={matcher:['/((?!_next/static|_next/image|favicon.ico).*)']}
+`
 
-// Add revalidate to images page
-let images = fs.readFileSync('app/images/page.tsx', 'utf8')
-if(!images.includes('revalidate')){
-  images = `export const revalidate=60\n` + images
-  fs.writeFileSync('app/images/page.tsx', images)
-  console.log('Images cached!')
-}
-
-console.log('All pages cached!')
+fs.writeFileSync('middleware.ts', middleware)
+console.log('done')
