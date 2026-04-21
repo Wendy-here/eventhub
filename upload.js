@@ -1,62 +1,37 @@
 const fs = require('fs')
 
-const editActions = `'use server'
-import{supabase}from'@/app/lib/supabase'
-import{redirect}from'next/navigation'
-import{revalidatePath}from'next/cache'
+const middleware = `import{createServerClient}from'@supabase/ssr'
+import{NextResponse}from'next/server'
 
-export async function updateEvent(formData:FormData){
-const id=formData.get('id') as string
-const title=formData.get('title') as string
-const date=formData.get('date') as string
-const description=formData.get('description') as string
-const location=formData.get('location') as string
-const drive_link=formData.get('drive_link') as string
-const category=formData.get('category') as string
-const entity=formData.get('entity') as string
-const office=formData.get('office') as string
-const tagsRaw=formData.get('tags') as string
-const tags=tagsRaw?tagsRaw.split(',').map((t:string)=>t.trim()).filter(Boolean):[]
-const{error}=await supabase.from('events').update({
-title,date,description,location,tags,
-drive_link:drive_link||null,
-category:category||null,
-entity:entity||null,
-office:office||null
-}).eq('id',id)
-if(error)console.error(error)
-revalidatePath('/')
-revalidatePath('/events')
-revalidatePath('/events/'+id)
-revalidatePath('/events/'+id+'/edit')
-redirect('/events/'+id)
+export async function middleware(request:any){
+const{pathname}=request.nextUrl
+
+if(
+pathname.startsWith('/auth')||
+pathname.startsWith('/_next')||
+pathname.startsWith('/api')||
+pathname.includes('.')
+)return NextResponse.next({request})
+
+const response=NextResponse.next({request})
+
+const supabase=createServerClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+{cookies:{getAll(){return request.cookies.getAll()},setAll(c:any){c.forEach(({name,value,options}:any)=>response.cookies.set(name,value,options))}}}
+)
+
+const{data:{user}}=await supabase.auth.getUser()
+
+if(pathname==='/login')return response
+if(!user)return NextResponse.redirect(new URL('/login',request.url))
+if(!user.email?.endsWith('@gradion.com'))return NextResponse.redirect(new URL('/login?error=unauthorized',request.url))
+
+return response
 }
 
-export async function deleteEvent(formData:FormData){
-const id=formData.get('id') as string
-const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id)
-if(images&&images.length>0){
-const paths=images.map((img:any)=>{const parts=img.image_url.split('/event-images/');return parts[1]||''}).filter(Boolean)
-if(paths.length>0)await supabase.storage.from('event-images').remove(paths)
-}
-await supabase.from('event_images').delete().eq('event_id',id)
-await supabase.from('events').delete().eq('id',id)
-revalidatePath('/')
-revalidatePath('/events')
-redirect('/')
-}
+export const config={matcher:['/((?!_next/static|_next/image|favicon.ico).*)']}
+`
 
-export async function deleteImage(formData:FormData){
-const imageId=formData.get('image_id') as string
-const eventId=formData.get('event_id') as string
-const imageUrl=formData.get('image_url') as string
-const parts=(imageUrl||'').split('/event-images/')
-if(parts[1])await supabase.storage.from('event-images').remove([parts[1]])
-await supabase.from('event_images').delete().eq('id',imageId)
-revalidatePath('/events/'+eventId)
-revalidatePath('/events/'+eventId+'/edit')
-redirect('/events/'+eventId+'/edit')
-}`
-
-fs.writeFileSync('app/events/[id]/edit/actions.ts', editActions)
-console.log('Done!')
+fs.writeFileSync('middleware.ts', middleware)
+console.log('done')
