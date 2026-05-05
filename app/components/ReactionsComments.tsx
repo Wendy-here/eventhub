@@ -7,9 +7,9 @@ const QUICK_EMOJIS=['👍','❤️','🎉','😮','😂','🔥','🙌','💪','�
 type Reaction={id:string,event_id:string,user_email:string,emoji:string}
 type Comment={id:string,event_id:string,user_email:string,user_name:string,content:string,created_at:string}
 
-export default function ReactionsComments({eventId}:{eventId:string}){
-const[reactions,setReactions]=useState<Reaction[]>([])
-const[comments,setComments]=useState<Comment[]>([])
+export default function ReactionsComments({eventId,initialReactions=[],initialComments=[]}:{eventId:string,initialReactions:Reaction[],initialComments:Comment[]}){
+const[reactions,setReactions]=useState<Reaction[]>(initialReactions)
+const[comments,setComments]=useState<Comment[]>(initialComments)
 const[newComment,setNewComment]=useState('')
 const[posting,setPosting]=useState(false)
 const[userEmail,setUserEmail]=useState('')
@@ -25,7 +25,6 @@ setUserEmail(user.email||'')
 setUserName(user.user_metadata?.full_name||user.email?.split('@')[0]||'User')
 }
 })
-loadData()
 },[eventId])
 
 useEffect(()=>{

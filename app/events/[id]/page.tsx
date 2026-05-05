@@ -2,12 +2,17 @@ import{supabase}from'@/app/lib/supabase'
 import{notFound}from'next/navigation'
 import{isAdmin}from'@/app/lib/roles'
 import ReactionsComments from'@/app/components/ReactionsComments'
+import Image from'next/image'
 
 export default async function EventPage(props:any){
 const{id}=await props.params
-const{data:event}=await supabase.from('events').select('*').eq('id',id).single()
+const[{data:event},{data:images},{data:initialReactions},{data:initialComments}]=await Promise.all([
+supabase.from('events').select('*').eq('id',id).single(),
+supabase.from('event_images').select('*').eq('event_id',id).order('sort_order'),
+supabase.from('reactions').select('*').eq('event_id',id),
+supabase.from('comments').select('*').eq('event_id',id).order('created_at',{ascending:true}),
+])
 if(!event)return notFound()
-const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id).order('sort_order')
 const admin=await isAdmin()
 const date=new Date(event.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
 
@@ -57,7 +62,9 @@ return(
 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:'10px'}}>
 {images.map((img:any)=>(
 <div key={img.id}>
-<img src={img.image_url} alt={img.caption||''} style={{width:'100%',aspectRatio:'4/3',objectFit:'cover',borderRadius:'8px',display:'block',border:'1px solid #F3F4F6'}}/>
+<div style={{position:'relative',aspectRatio:'4/3',borderRadius:'8px',overflow:'hidden',border:'1px solid #F3F4F6'}}>
+<Image src={img.image_url} alt={img.caption||''} fill sizes='(max-width:640px) 50vw, (max-width:1024px) 25vw, 200px' style={{objectFit:'cover'}}/>
+</div>
 {img.caption&&<div style={{fontSize:'11px',color:'#9CA3AF',marginTop:'4px',textAlign:'center' as const}}>{img.caption}</div>}
 </div>
 ))}
@@ -70,7 +77,7 @@ No preview images yet
 )}
 </div>
 
-<ReactionsComments eventId={id}/>
+<ReactionsComments eventId={id} initialReactions={initialReactions||[]} initialComments={initialComments||[]}/>
 
 </div>
 )

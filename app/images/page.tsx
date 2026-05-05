@@ -1,4 +1,5 @@
 import{supabase}from'@/app/lib/supabase'
+import Image from'next/image'
 
 export default async function ImagesPage(){
 const{data:images}=await supabase
@@ -16,7 +17,9 @@ return(
 {images?.map((img:any)=>(
 <a key={img.id} href={'/events/'+(img.events?.id||'')} style={{textDecoration:'none'}}>
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',overflow:'hidden'}}>
-<img src={img.image_url} alt={img.caption||''} style={{width:'100%',aspectRatio:'4/3',objectFit:'cover',display:'block'}}/>
+<div style={{position:'relative',aspectRatio:'4/3'}}>
+<Image src={img.image_url} alt={img.caption||''} fill sizes='(max-width:640px) 50vw, (max-width:1024px) 25vw, 200px' style={{objectFit:'cover'}}/>
+</div>
 <div style={{padding:'8px 10px'}}>
 <div style={{fontSize:'11px',fontWeight:500,color:'#1A1A1A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{img.events?.title||'Event'}</div>
 {img.caption&&<div style={{fontSize:'10.5px',color:'#6B7280',marginTop:'2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{img.caption}</div>}
