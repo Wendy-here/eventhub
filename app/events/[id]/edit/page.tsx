@@ -2,6 +2,7 @@ import{supabase}from'@/app/lib/supabase'
 import{notFound}from'next/navigation'
 import{updateEvent,deleteEvent,deleteImage}from'./actions'
 import DeleteButton from'./DeleteButton'
+import DateTimePicker from'@/app/components/DateTimePicker'
 import{TIMEZONE_KEYS}from'@/app/lib/timezones'
 
 const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
@@ -39,23 +40,12 @@ return(
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Event title</label>
 <input name='title' required defaultValue={event.title} style={inp}/>
 </div>
-<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
-<div>
-<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Date</label>
-<input name='date' type='date' required defaultValue={event.date} min='1900-01-01' max='9999-12-31' style={inp}/>
-</div>
-<div>
-<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Time <span style={{fontWeight:400,color:'#9CA3AF'}}>(optional)</span></label>
-<input name='event_time' type='time' defaultValue={event.event_time||''} style={inp}/>
-</div>
-<div>
-<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Timezone</label>
-<select name='timezone' defaultValue={event.timezone||''} style={{...inp,cursor:'pointer'}}>
-<option value=''>—</option>
-{TIMEZONE_KEYS.map((tz:string)=><option key={tz} value={tz}>{tz}</option>)}
-</select>
-</div>
-</div>
+<DateTimePicker
+defaultDate={event.date||''}
+defaultTime={event.event_time||''}
+defaultTimezone={event.timezone||''}
+timezoneOptions={TIMEZONE_KEYS}
+/>
 <div>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Location</label>
 <input name='location' defaultValue={event.location||''} style={inp}/>

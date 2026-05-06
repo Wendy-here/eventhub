@@ -1,32 +1,24 @@
 'use client'
 import{useState,useEffect,useRef}from'react'
 import{supabase}from'@/app/lib/supabase'
+import{useToast,ToastContainer}from'@/app/components/Toast'
 
 const QUICK_EMOJIS=['👍','❤️','🎉','😮','😂','🔥','🙌','💪','👏','😍']
 
 type Reaction={id:string,event_id:string,user_email:string,emoji:string}
 type Comment={id:string,event_id:string,user_email:string,user_name:string,content:string,created_at:string}
 
-export default function ReactionsComments({eventId,initialReactions=[],initialComments=[]}:{eventId:string,initialReactions:Reaction[],initialComments:Comment[]}){
+export default function ReactionsComments({eventId,initialReactions=[],initialComments=[],userEmail,userName}:{eventId:string,initialReactions:Reaction[],initialComments:Comment[],userEmail:string,userName:string}){
 const[reactions,setReactions]=useState<Reaction[]>(initialReactions)
 const[comments,setComments]=useState<Comment[]>(initialComments)
 const[newComment,setNewComment]=useState('')
 const[posting,setPosting]=useState(false)
-const[userEmail,setUserEmail]=useState('')
-const[userName,setUserName]=useState('')
+const[reactingEmoji,setReactingEmoji]=useState<string|null>(null)
 const[showPicker,setShowPicker]=useState(false)
 const[customEmoji,setCustomEmoji]=useState('')
 const pickerRef=useRef<HTMLDivElement>(null)
 const postingRef=useRef(false)
-
-useEffect(()=>{
-supabase.auth.getUser().then(({data:{user}})=>{
-if(user){
-setUserEmail(user.email||'')
-setUserName(user.user_metadata?.full_name||user.email?.split('@')[0]||'User')
-}
-})
-},[eventId])
+const{toasts,show:showToast}=useToast()
 
 useEffect(()=>{
 const handler=(e:MouseEvent)=>{
@@ -46,27 +38,42 @@ setComments(c||[])
 }
 
 const toggleReaction=async(emoji:string)=>{
-if(!userEmail)return
+if(!userEmail||reactingEmoji)return
+setReactingEmoji(emoji)
 const existing=reactions.find(r=>r.user_email===userEmail&&r.emoji===emoji)
+try{
 if(existing){
-await supabase.from('reactions').delete().eq('id',existing.id)
+const{error}=await supabase.from('reactions').delete().eq('id',existing.id)
+if(error)throw error
 setReactions(prev=>prev.filter(r=>r.id!==existing.id))
 }else{
-const{data}=await supabase.from('reactions').insert({event_id:eventId,user_email:userEmail,emoji}).select().single()
+const{data,error}=await supabase.from('reactions').insert({event_id:eventId,user_email:userEmail,emoji}).select().single()
+if(error)throw error
 if(data)setReactions(prev=>[...prev,data])
 }
+}catch{
+showToast('Could not save reaction. Please try again.','error')
+}finally{
+setReactingEmoji(null)
 setShowPicker(false)
 setCustomEmoji('')
+}
 }
 
 const postComment=async()=>{
 if(!newComment.trim()||!userEmail||postingRef.current)return
 postingRef.current=true
 setPosting(true)
-const{data}=await supabase.from('comments').insert({event_id:eventId,user_email:userEmail,user_name:userName,content:newComment.trim()}).select().single()
+try{
+const{data,error}=await supabase.from('comments').insert({event_id:eventId,user_email:userEmail,user_name:userName,content:newComment.trim()}).select().single()
+if(error)throw error
 if(data){setComments(prev=>[...prev,data]);setNewComment('')}
+}catch{
+showToast('Could not post comment. Please try again.','error')
+}finally{
 setPosting(false)
 postingRef.current=false
+}
 }
 
 const deleteComment=async(commentId:string,commentEmail:string)=>{
@@ -93,6 +100,8 @@ return Math.floor(hrs/24)+'d ago'
 }
 
 return(
+<>
+<ToastContainer toasts={toasts}/>
 <div style={{display:'flex',flexDirection:'column',gap:'16px'}}>
 
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px'}}>
@@ -102,9 +111,10 @@ return(
 {allUniqueEmojis.map(emoji=>{
 const count=getReactionCount(emoji)
 const reacted=hasReacted(emoji)
+const isLoading=reactingEmoji===emoji
 return(
-<button key={emoji} onClick={()=>toggleReaction(emoji)} style={{display:'flex',alignItems:'center',gap:'5px',padding:'6px 12px',borderRadius:'999px',border:'1px solid',borderColor:reacted?'#FF6B00':'#E5E7EB',background:reacted?'#FF6B00':'#ffffff',color:reacted?'#ffffff':'#1A1A1A',fontSize:'13px',cursor:'pointer',fontFamily:'Noto Sans,sans-serif',fontWeight:500}}>
-<span style={{fontSize:'16px'}}>{emoji}</span>
+<button key={emoji} onClick={()=>toggleReaction(emoji)} disabled={!!reactingEmoji} style={{display:'flex',alignItems:'center',gap:'5px',padding:'6px 12px',borderRadius:'999px',border:'1px solid',borderColor:reacted?'#FF6B00':'#E5E7EB',background:reacted?'#FF6B00':'#ffffff',color:reacted?'#ffffff':'#1A1A1A',fontSize:'13px',cursor:reactingEmoji?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',fontWeight:500,opacity:reactingEmoji&&!isLoading?.6:1,transition:'opacity .15s'}}>
+{isLoading?<span style={{width:'14px',height:'14px',border:'1.5px solid currentColor',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'spin .6s linear infinite'}}/>:<span style={{fontSize:'16px'}}>{emoji}</span>}
 <span>{count}</span>
 </button>
 )
@@ -188,12 +198,14 @@ rows={2}
 disabled={posting}
 style={{flex:1,border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',resize:'none' as const,color:'#1A1A1A',opacity:posting?.6:1,transition:'opacity .15s'}}
 />
-<button onClick={postComment} disabled={posting||!newComment.trim()} style={{background:posting||!newComment.trim()?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:posting||!newComment.trim()?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',flexShrink:0,minWidth:'52px'}}>
-{posting?'...':'Post'}
+<button onClick={postComment} disabled={posting||!newComment.trim()} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'5px',background:posting||!newComment.trim()?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:posting||!newComment.trim()?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',flexShrink:0,minWidth:'52px'}}>
+{posting?<span style={{width:'12px',height:'12px',border:'1.5px solid #fff',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'spin .6s linear infinite'}}/>:'Post'}
 </button>
 </div>
 </div>
 
 </div>
+<style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+</>
 )
 }

@@ -2,6 +2,8 @@
 import{useState,useRef,useCallback}from'react'
 import Image from'next/image'
 
+const TOOLTIP_W=240
+
 type EventData={
 id:string
 title:string
@@ -19,15 +21,19 @@ firstImage?:string
 export default function EventPill({ev,color}:{ev:EventData,color:string}){
 const[show,setShow]=useState(false)
 const[above,setAbove]=useState(false)
+const[leftOffset,setLeftOffset]=useState(0)
 const timerRef=useRef<ReturnType<typeof setTimeout>|null>(null)
 const pillRef=useRef<HTMLDivElement>(null)
-const tappedRef=useRef(false) // mobile: first tap = preview, second = navigate
+const tappedRef=useRef(false)
 
 const open=useCallback(()=>{
-// Position tooltip above or below based on space
 if(pillRef.current){
 const rect=pillRef.current.getBoundingClientRect()
 setAbove(rect.bottom+220>window.innerHeight)
+// Center tooltip over pill, then clamp to keep it inside viewport (8px padding)
+const idealVpLeft=rect.left+rect.width/2-TOOLTIP_W/2
+const clampedVpLeft=Math.max(8,Math.min(idealVpLeft,window.innerWidth-TOOLTIP_W-8))
+setLeftOffset(clampedVpLeft-rect.left)
 }
 setShow(true)
 },[])
@@ -68,9 +74,9 @@ style={{display:'block',padding:'2px 6px',borderRadius:'4px',fontSize:'10.5px',f
 <div style={{
 position:'absolute',
 [above?'bottom':'top']:'calc(100% + 6px)',
-left:'50%',transform:'translateX(-50%)',
+left:leftOffset+'px',
 zIndex:200,
-width:'240px',
+width:TOOLTIP_W+'px',
 background:'#ffffff',
 border:'1px solid #E5E7EB',
 borderRadius:'12px',

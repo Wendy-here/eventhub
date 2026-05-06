@@ -2,7 +2,7 @@
 import{useState,useCallback,useEffect}from'react'
 import{supabase}from'@/app/lib/supabase'
 import{useRouter}from'next/navigation'
-
+import DateTimePicker from'@/app/components/DateTimePicker'
 import{TIMEZONE_KEYS}from'@/app/lib/timezones'
 
 const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
@@ -11,6 +11,12 @@ Vietnam:['Saigon','Hanoi','Can Tho'],
 Thailand:['Bangkok'],
 Egypt:['Cairo'],
 Germany:['Berlin'],
+}
+const ENTITY_TIMEZONE:Record<string,string>={
+Vietnam:'Vietnam / Thailand',
+Thailand:'Vietnam / Thailand',
+Egypt:'Egypt',
+Germany:'Germany',
 }
 
 type FileItem={file:File,preview:string,caption:string}
@@ -23,6 +29,14 @@ const[dragOver,setDragOver]=useState(false)
 const[saving,setSaving]=useState(false)
 const[driveLink,setDriveLink]=useState('')
 const[selectedEntity,setSelectedEntity]=useState('')
+const[selectedTimezone,setSelectedTimezone]=useState('')
+const[tzManuallySet,setTzManuallySet]=useState(false)
+
+const handleEntityChange=(e:string)=>{
+setSelectedEntity(e)
+if(!tzManuallySet&&e&&ENTITY_TIMEZONE[e])setSelectedTimezone(ENTITY_TIMEZONE[e])
+else if(!tzManuallySet&&!e)setSelectedTimezone('')
+}
 const[categories,setCategories]=useState<Category[]>([])
 const[loading,setLoading]=useState(true)
 
@@ -47,12 +61,16 @@ handleFiles(e.dataTransfer.files)
 
 const removeFile=(i:number)=>setFiles((prev:FileItem[])=>prev.filter((_,idx)=>idx!==i))
 
+const[dateError,setDateError]=useState('')
+
 const handleSubmit=async(e:React.FormEvent<HTMLFormElement>)=>{
 e.preventDefault()
-setSaving(true)
 const form=new FormData(e.currentTarget)
 const title=form.get('title') as string
 const date=form.get('date') as string
+if(!date){setDateError('Please select a day, month, and year.');return}
+setDateError('')
+setSaving(true)
 const description=form.get('description') as string
 const location=form.get('location') as string
 const tagsRaw=form.get('tags') as string
@@ -108,23 +126,8 @@ return(
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Event title *</label>
 <input name='title' required placeholder='e.g. Q2 Team Outing' style={inp}/>
 </div>
-<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
-<div>
-<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Date *</label>
-<input name='date' type='date' required min='1900-01-01' max='9999-12-31' onInput={(e:React.FormEvent<HTMLInputElement>)=>{const v=e.currentTarget.value;if(v){const[y,...rest]=v.split('-');if(y.length>4)e.currentTarget.value=y.slice(0,4)+(rest.length?'-'+rest.join('-'):'')}}} style={inp}/>
-</div>
-<div>
-<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Time <span style={{fontWeight:400,color:'#9CA3AF'}}>(optional)</span></label>
-<input name='event_time' type='time' style={inp}/>
-</div>
-<div>
-<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Timezone</label>
-<select name='timezone' style={{...inp,cursor:'pointer'}}>
-<option value=''>—</option>
-{TIMEZONE_KEYS.map(tz=><option key={tz} value={tz}>{tz}</option>)}
-</select>
-</div>
-</div>
+<DateTimePicker timezoneOptions={TIMEZONE_KEYS} timezone={selectedTimezone} onTimezoneChange={tz=>{setSelectedTimezone(tz);setTzManuallySet(true)}}/>
+{dateError&&<div style={{fontSize:'12px',color:'#dc2626',padding:'5px 10px',background:'#fef2f2',borderRadius:'6px',border:'1px solid #fecaca'}}>{dateError}</div>}
 <div>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Location</label>
 <input name='location' placeholder='e.g. HCM Office' style={inp}/>
@@ -142,7 +145,7 @@ Category
 </div>
 <div>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Entity</label>
-<select name='entity' style={{...inp,cursor:'pointer'}} value={selectedEntity} onChange={(e)=>setSelectedEntity(e.target.value)}>
+<select name='entity' style={{...inp,cursor:'pointer'}} value={selectedEntity} onChange={(e)=>handleEntityChange(e.target.value)}>
 <option value=''>Select entity</option>
 {ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
 </select>
