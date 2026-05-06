@@ -1,15 +1,7 @@
 import{supabase}from'@/app/lib/supabase'
 import{Suspense}from'react'
 import FilterBar from'@/app/components/FilterBar'
-
-const CATEGORIES=['Team Building','Workshop','CSR','Culture','Internal','Other']
-const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
-const OFFICES:Record<string,string[]>={
-Vietnam:['Saigon','Hanoi','Can Tho'],
-Thailand:['Bangkok'],
-Egypt:['Cairo'],
-Germany:['Berlin'],
-}
+import EventPill from'@/app/components/EventPill'
 
 export default async function CalendarPage({searchParams}:any){
 const sp=await searchParams
@@ -35,6 +27,14 @@ if(office)query=query.eq('office',office)
 
 const{data:events}=await query
 const{data:recentEvents}=await supabase.from('events').select('*').order('date',{ascending:false}).limit(6)
+
+// First image per event for hover previews
+const eventIds=events?.map((e:any)=>e.id)||[]
+const{data:previewImages}=eventIds.length>0
+?await supabase.from('event_images').select('event_id,image_url').in('event_id',eventIds).order('sort_order').limit(eventIds.length)
+:{data:[]}
+const firstImageByEvent:Record<string,string>={}
+previewImages?.forEach((img:any)=>{if(!firstImageByEvent[img.event_id])firstImageByEvent[img.event_id]=img.image_url})
 
 const eventsByDate:Record<string,any[]>={}
 events?.forEach((e:any)=>{
@@ -74,6 +74,7 @@ return qs?'/?'+qs:'/'
 }
 
 const evColors=['#FF6B00','#0F6E56','#534AB7','#C2410C','#15803D']
+const sortedEvents=[...(events||[])].sort((a:any,b:any)=>a.date.localeCompare(b.date))
 
 return(
 <div>
@@ -81,16 +82,19 @@ return(
 <FilterBar/>
 </Suspense>
 
-<div style={{padding:'20px 24px'}}>
-<div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginBottom:'16px',flexWrap:'wrap',gap:'12px'}}>
+<div className='page-padding' style={{padding:'20px 24px'}}>
+<div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginBottom:'16px',flexWrap:'wrap' as const,gap:'12px'}}>
 <div>
 <h1 style={{fontSize:'21px',fontWeight:700,color:'#1A1A1A',letterSpacing:'-.3px',margin:0}}>Company calendar</h1>
 <p style={{fontSize:'12.5px',color:'#6B7280',marginTop:'3px',marginBottom:0}}>Every Gradion moment, in one place.</p>
 </div>
 </div>
 
+{/* Calendar card — shared nav header + two layouts */}
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'24px'}}>
-<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid #F3F4F6',flexWrap:'wrap',gap:'8px'}}>
+
+{/* Month navigation — always visible */}
+<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid #F3F4F6',flexWrap:'wrap' as const,gap:'8px'}}>
 <div style={{display:'flex',gap:'4px',alignItems:'center'}}>
 <a href={buildUrl({year:String(prevYear),month:String(prevMonth)})} style={{width:'28px',height:'28px',border:'1px solid #E5E7EB',borderRadius:'6px',background:'#fff',fontSize:'14px',color:'#374151',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>‹</a>
 <a href={buildUrl({year:String(today.getFullYear()),month:String(today.getMonth()+1)})} style={{height:'28px',padding:'0 10px',border:'1px solid #E5E7EB',borderRadius:'6px',background:'#fff',fontSize:'12px',color:'#374151',textDecoration:'none',display:'flex',alignItems:'center'}}>Today</a>
@@ -100,12 +104,13 @@ return(
 <span style={{fontSize:'12px',color:'#6B7280'}}>{events?.length||0} events</span>
 </div>
 
+{/* ── Desktop full grid ── */}
+<div className='cal-desktop'>
 <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',background:'#F9FAFB',borderBottom:'1px solid #F3F4F6'}}>
 {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d:string,i:number)=>(
-<div key={d} style={{textAlign:'center',padding:'8px 0',fontSize:'10.5px',fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',color:i>=5?'#FF6B00':'#9CA3AF'}}>{d}</div>
+<div key={d} style={{textAlign:'center',padding:'8px 0',fontSize:'10.5px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.05em',color:i>=5?'#FF6B00':'#9CA3AF'}}>{d}</div>
 ))}
 </div>
-
 <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
 {days.map((cell:any,i:number)=>(
 <div key={i} style={{borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',padding:'6px',minHeight:'90px',background:cell.date===todayStr?'#FFF7F0':cell.day?'#ffffff':'#FAFAFA',opacity:cell.day?1:.4}}>
@@ -113,7 +118,7 @@ return(
 <>
 <div style={{fontSize:'11.5px',fontWeight:cell.date===todayStr?700:500,color:cell.date===todayStr?'#FF6B00':'#6B7280',marginBottom:'3px'}}>{cell.day}</div>
 {(eventsByDate[cell.date!]||[]).map((ev:any,ei:number)=>(
-<a key={ev.id} href={'/events/'+ev.id} style={{display:'block',padding:'2px 6px',borderRadius:'4px',fontSize:'10.5px',fontWeight:500,marginBottom:'2px',textDecoration:'none',background:evColors[ei%evColors.length],color:'#ffffff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ev.title}</a>
+<EventPill key={ev.id} ev={{...ev,firstImage:firstImageByEvent[ev.id]}} color={evColors[ei%evColors.length]}/>
 ))}
 </>
 )}
@@ -122,15 +127,73 @@ return(
 </div>
 </div>
 
-<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase',letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Recent events</div>
-<div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
+{/* ── Mobile compact view ── */}
+<div className='cal-mobile' style={{display:'none'}}>
+{/* Mini day grid — dots only */}
+<div style={{borderBottom:'1px solid #F3F4F6'}}>
+<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',background:'#F9FAFB',borderBottom:'1px solid #F3F4F6'}}>
+{['M','T','W','T','F','S','S'].map((d:string,i:number)=>(
+<div key={i} style={{textAlign:'center',padding:'6px 0',fontSize:'10px',fontWeight:600,textTransform:'uppercase' as const,color:i>=5?'#FF6B00':'#9CA3AF'}}>{d}</div>
+))}
+</div>
+<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+{days.map((cell:any,i:number)=>{
+const hasEvents=cell.date&&(eventsByDate[cell.date]||[]).length>0
+const isToday=cell.date===todayStr
+return(
+<div key={i} style={{textAlign:'center',padding:'6px 2px',borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',minHeight:'44px',background:isToday?'#FFF7F0':cell.day?'#ffffff':'#FAFAFA',opacity:cell.day?1:.3,display:'flex',flexDirection:'column' as const,alignItems:'center',gap:'2px'}}>
+{cell.day&&(
+<>
+<span style={{fontSize:'12px',fontWeight:isToday?700:400,color:isToday?'#FF6B00':'#374151'}}>{cell.day}</span>
+{hasEvents&&<span style={{width:'5px',height:'5px',borderRadius:'50%',background:'#FF6B00',display:'block'}}/>}
+</>
+)}
+</div>
+)
+})}
+</div>
+</div>
+
+{/* Mobile event list */}
+<div style={{padding:'14px 16px'}}>
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.06em',color:'#6B7280',marginBottom:'10px'}}>
+Events this month ({events?.length||0})
+</div>
+{sortedEvents.length>0?(
+<div style={{display:'flex',flexDirection:'column' as const,gap:'8px'}}>
+{sortedEvents.map((ev:any)=>{
+const d=new Date(ev.date+'T00:00:00')
+const dateLabel=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})
+return(
+<a key={ev.id} href={'/events/'+ev.id} style={{textDecoration:'none',display:'block',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'12px 14px'}}>
+<div style={{fontSize:'11px',color:'#FF6B00',fontWeight:500,marginBottom:'3px'}}>{dateLabel}</div>
+<div style={{fontSize:'14px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
+{ev.location&&<div style={{fontSize:'12px',color:'#6B7280',marginBottom:'4px'}}>📍 {ev.location}</div>}
+<div style={{display:'flex',gap:'5px',flexWrap:'wrap' as const}}>
+{ev.category&&<span style={{fontSize:'10px',background:'#FFE4D1',color:'#E65C00',padding:'1px 8px',borderRadius:'999px',fontWeight:500}}>{ev.category}</span>}
+{ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.entity}</span>}
+</div>
+</a>
+)
+})}
+</div>
+):(
+<div style={{padding:'32px',textAlign:'center' as const,color:'#9CA3AF',fontSize:'13px'}}>No events this month</div>
+)}
+</div>
+</div>
+
+</div>
+
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Recent events</div>
+<div className='events-grid' style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
 {recentEvents?.map((ev:any)=>(
 <a key={ev.id} href={'/events/'+ev.id} style={{textDecoration:'none'}}>
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'14px'}}>
 <div style={{fontSize:'11px',color:'#E65C00',fontWeight:500,marginBottom:'4px'}}>{new Date(ev.date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
 <div style={{fontSize:'13.5px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
-{ev.description&&<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{ev.description}</div>}
-<div style={{display:'flex',gap:'5px',marginTop:'8px',flexWrap:'wrap'}}>
+{ev.description&&<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>{ev.description}</div>}
+<div style={{display:'flex',gap:'5px',marginTop:'8px',flexWrap:'wrap' as const}}>
 {ev.category&&<span style={{fontSize:'10px',background:'#FFE4D1',color:'#E65C00',padding:'1px 8px',borderRadius:'999px',fontWeight:500}}>{ev.category}</span>}
 {ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.entity}</span>}
 {ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.office}</span>}

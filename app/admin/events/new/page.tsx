@@ -3,6 +3,8 @@ import{useState,useCallback,useEffect}from'react'
 import{supabase}from'@/app/lib/supabase'
 import{useRouter}from'next/navigation'
 
+import{TIMEZONE_KEYS}from'@/app/lib/timezones'
+
 const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
 const OFFICES:Record<string,string[]>={
 Vietnam:['Saigon','Hanoi','Can Tho'],
@@ -57,6 +59,8 @@ const tagsRaw=form.get('tags') as string
 const category=form.get('category') as string
 const entity=form.get('entity') as string
 const office=form.get('office') as string
+const event_time=form.get('event_time') as string
+const timezone=form.get('timezone') as string
 const tags=tagsRaw?tagsRaw.split(',').map((t:string)=>t.trim()).filter(Boolean):[]
 
 const{data:event,error}=await supabase.from('events').insert({
@@ -64,7 +68,9 @@ title,date,description,location,tags,
 drive_link:driveLink||null,
 category:category||null,
 entity:entity||null,
-office:office||null
+office:office||null,
+event_time:event_time||null,
+timezone:timezone||null,
 }).select().single()
 if(error){console.error(error);setSaving(false);return}
 
@@ -102,15 +108,26 @@ return(
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Event title *</label>
 <input name='title' required placeholder='e.g. Q2 Team Outing' style={inp}/>
 </div>
-<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
 <div>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Date *</label>
-<input name='date' type='date' required style={inp}/>
+<input name='date' type='date' required min='1900-01-01' max='9999-12-31' onInput={(e:React.FormEvent<HTMLInputElement>)=>{const v=e.currentTarget.value;if(v){const[y,...rest]=v.split('-');if(y.length>4)e.currentTarget.value=y.slice(0,4)+(rest.length?'-'+rest.join('-'):'')}}} style={inp}/>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Time <span style={{fontWeight:400,color:'#9CA3AF'}}>(optional)</span></label>
+<input name='event_time' type='time' style={inp}/>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Timezone</label>
+<select name='timezone' style={{...inp,cursor:'pointer'}}>
+<option value=''>—</option>
+{TIMEZONE_KEYS.map(tz=><option key={tz} value={tz}>{tz}</option>)}
+</select>
+</div>
 </div>
 <div>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Location</label>
 <input name='location' placeholder='e.g. HCM Office' style={inp}/>
-</div>
 </div>
 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
 <div>

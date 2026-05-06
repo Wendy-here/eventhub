@@ -57,7 +57,7 @@ fontWeight:active?600:400
 } as React.CSSProperties)
 
 return(
-<div style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 24px',height:'42px',display:'flex',alignItems:'center',gap:'8px'}}>
+<div className='filter-bar' style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 16px',height:'42px',display:'flex',alignItems:'center',gap:'8px'}}>
 <span style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'.06em',marginRight:'4px'}}>Filter:</span>
 <select value={category} style={sel(!!category)} onChange={(e)=>router.push(buildUrl({category:e.target.value,office:''}))}>
 <option value=''>All categories</option>

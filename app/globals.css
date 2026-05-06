@@ -18,3 +18,46 @@ a:hover {
   background: #fff3eb;
   color: #ff6b00 !important;
 }
+
+/* ── Responsive utilities ───────────────────────────── */
+@media (max-width: 767px) {
+  .desktop-only { display: none !important; }
+}
+@media (min-width: 768px) {
+  .mobile-only { display: none !important; }
+}
+
+/* Calendar: hide full grid on mobile, show list; opposite on desktop */
+@media (max-width: 639px) {
+  .cal-desktop { display: none !important; }
+  .cal-mobile   { display: block !important; }
+  /* Compact day cells */
+  .cal-day-cell { min-height: 44px !important; padding: 4px !important; }
+}
+@media (min-width: 640px) {
+  .cal-mobile { display: none !important; }
+}
+
+/* Recent-events grid: 3-col → 2-col → 1-col */
+@media (max-width: 639px) {
+  .events-grid { grid-template-columns: 1fr !important; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .events-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* FilterBar: scrollable on mobile */
+@media (max-width: 767px) {
+  .filter-bar {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap !important;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+}
+
+/* Padding reduction on small screens */
+@media (max-width: 639px) {
+  .page-padding { padding: 14px 16px !important; }
+}

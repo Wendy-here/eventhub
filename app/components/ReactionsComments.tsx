@@ -17,6 +17,7 @@ const[userName,setUserName]=useState('')
 const[showPicker,setShowPicker]=useState(false)
 const[customEmoji,setCustomEmoji]=useState('')
 const pickerRef=useRef<HTMLDivElement>(null)
+const postingRef=useRef(false)
 
 useEffect(()=>{
 supabase.auth.getUser().then(({data:{user}})=>{
@@ -59,11 +60,13 @@ setCustomEmoji('')
 }
 
 const postComment=async()=>{
-if(!newComment.trim()||!userEmail)return
+if(!newComment.trim()||!userEmail||postingRef.current)return
+postingRef.current=true
 setPosting(true)
 const{data}=await supabase.from('comments').insert({event_id:eventId,user_email:userEmail,user_name:userName,content:newComment.trim()}).select().single()
 if(data){setComments(prev=>[...prev,data]);setNewComment('')}
 setPosting(false)
+postingRef.current=false
 }
 
 const deleteComment=async(commentId:string,commentEmail:string)=>{
@@ -182,9 +185,10 @@ onChange={(e)=>setNewComment(e.target.value)}
 onKeyDown={(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();postComment()}}}
 placeholder='Write a comment... (Enter to post)'
 rows={2}
-style={{flex:1,border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',resize:'none' as const,color:'#1A1A1A'}}
+disabled={posting}
+style={{flex:1,border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',resize:'none' as const,color:'#1A1A1A',opacity:posting?.6:1,transition:'opacity .15s'}}
 />
-<button onClick={postComment} disabled={posting||!newComment.trim()} style={{background:!newComment.trim()?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:!newComment.trim()?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',flexShrink:0}}>
+<button onClick={postComment} disabled={posting||!newComment.trim()} style={{background:posting||!newComment.trim()?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:posting||!newComment.trim()?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',flexShrink:0,minWidth:'52px'}}>
 {posting?'...':'Post'}
 </button>
 </div>

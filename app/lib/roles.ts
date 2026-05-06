@@ -17,6 +17,16 @@ return user
 export async function isAdmin(){
 const user=await getCurrentUser()
 if(!user?.email)return false
+if(!ADMIN_EMAILS.includes(user.email))return false
+// Allow admins to preview the app as a regular member
+const cookieStore=await cookies()
+if(cookieStore.get('previewRole')?.value==='member')return false
+return true
+}
+
+export async function isRealAdmin(){
+const user=await getCurrentUser()
+if(!user?.email)return false
 return ADMIN_EMAILS.includes(user.email)
 }
 

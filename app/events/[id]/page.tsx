@@ -2,15 +2,18 @@ import{supabase}from'@/app/lib/supabase'
 import{notFound}from'next/navigation'
 import{isAdmin}from'@/app/lib/roles'
 import ReactionsComments from'@/app/components/ReactionsComments'
+import AttendanceBar from'@/app/components/AttendanceBar'
 import Image from'next/image'
+import{allZoneTimes}from'@/app/lib/timezones'
 
 export default async function EventPage(props:any){
 const{id}=await props.params
-const[{data:event},{data:images},{data:initialReactions},{data:initialComments}]=await Promise.all([
+const[{data:event},{data:images},{data:initialReactions},{data:initialComments},{data:initialAttendances}]=await Promise.all([
 supabase.from('events').select('*').eq('id',id).single(),
 supabase.from('event_images').select('*').eq('event_id',id).order('sort_order'),
 supabase.from('reactions').select('*').eq('event_id',id),
 supabase.from('comments').select('*').eq('event_id',id).order('created_at',{ascending:true}),
+supabase.from('attendances').select('*').eq('event_id',id),
 ])
 if(!event)return notFound()
 const admin=await isAdmin()
@@ -28,6 +31,17 @@ return(
 <h1 style={{fontSize:'22px',fontWeight:700,color:'#1A1A1A',letterSpacing:'-.3px',margin:'0 0 8px'}}>{event.title}</h1>
 <div style={{fontSize:'12.5px',color:'#6B7280',lineHeight:1.7}}>
 <div>📅 {date}</div>
+{event.event_time&&event.timezone&&(
+<div style={{display:'flex',flexWrap:'wrap' as const,gap:'12px',alignItems:'center',marginTop:'1px'}}>
+{allZoneTimes(event.event_time,event.timezone,event.date).map(({tz,time,abbr})=>(
+<span key={tz} style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
+<span style={{fontWeight:600,color:'#374151'}}>{time}</span>
+<span style={{fontSize:'11px',background:'#F3F4F6',color:'#374151',padding:'1px 6px',borderRadius:'4px',fontWeight:500}}>{abbr}</span>
+<span style={{fontSize:'11px',color:'#9CA3AF'}}>{tz}</span>
+</span>
+))}
+</div>
+)}
 {event.location&&<div>📍 {event.location}</div>}
 </div>
 </div>
@@ -76,6 +90,13 @@ No preview images yet
 </div>
 )}
 </div>
+
+<AttendanceBar
+eventId={id}
+eventTitle={event.title}
+initialAttendances={initialAttendances||[]}
+isAdmin={admin}
+/>
 
 <ReactionsComments eventId={id} initialReactions={initialReactions||[]} initialComments={initialComments||[]}/>
 
