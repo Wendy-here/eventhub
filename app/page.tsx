@@ -17,18 +17,25 @@ const firstDay=new Date(year,month-1,1)
 const lastDay=new Date(year,month,0)
 const monthName=firstDay.toLocaleString('default',{month:'long'})
 
-let query=supabase.from('events').select('*')
+// Only fetch fields needed by the calendar pill and mobile list
+const CALENDAR_FIELDS='id,title,date,location,category,entity,office,event_time,timezone,description'
+const RECENT_FIELDS='id,title,date,description,category,entity,office'
+
+let calQuery=supabase.from('events').select(CALENDAR_FIELDS)
 .gte('date',firstDay.toISOString().split('T')[0])
 .lte('date',lastDay.toISOString().split('T')[0])
-if(search)query=query.ilike('title','%'+search+'%')
-if(category)query=query.eq('category',category)
-if(entity)query=query.eq('entity',entity)
-if(office)query=query.eq('office',office)
+if(search)calQuery=calQuery.ilike('title','%'+search+'%')
+if(category)calQuery=calQuery.eq('category',category)
+if(entity)calQuery=calQuery.eq('entity',entity)
+if(office)calQuery=calQuery.eq('office',office)
 
-const{data:events}=await query
-const{data:recentEvents}=await supabase.from('events').select('*').order('date',{ascending:false}).limit(6)
+// Run calendar events + recent events in parallel
+const[{data:events},{data:recentEvents}]=await Promise.all([
+calQuery,
+supabase.from('events').select(RECENT_FIELDS).order('date',{ascending:false}).limit(6)
+])
 
-// First image per event for hover previews
+// Preview images depend on event IDs — run immediately after events resolve
 const eventIds=events?.map((e:any)=>e.id)||[]
 const{data:previewImages}=eventIds.length>0
 ?await supabase.from('event_images').select('event_id,image_url').in('event_id',eventIds).order('sort_order').limit(eventIds.length)

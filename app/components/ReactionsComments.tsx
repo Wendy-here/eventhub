@@ -114,7 +114,7 @@ const reacted=hasReacted(emoji)
 const isLoading=reactingEmoji===emoji
 return(
 <button key={emoji} onClick={()=>toggleReaction(emoji)} disabled={!!reactingEmoji} style={{display:'flex',alignItems:'center',gap:'5px',padding:'6px 12px',borderRadius:'999px',border:'1px solid',borderColor:reacted?'#FF6B00':'#E5E7EB',background:reacted?'#FF6B00':'#ffffff',color:reacted?'#ffffff':'#1A1A1A',fontSize:'13px',cursor:reactingEmoji?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',fontWeight:500,opacity:reactingEmoji&&!isLoading?.6:1,transition:'opacity .15s'}}>
-{isLoading?<span style={{width:'14px',height:'14px',border:'1.5px solid currentColor',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'spin .6s linear infinite'}}/>:<span style={{fontSize:'16px'}}>{emoji}</span>}
+{isLoading?<span style={{width:'14px',height:'14px',border:'1.5px solid currentColor',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite'}}/>:<span style={{fontSize:'16px'}}>{emoji}</span>}
 <span>{count}</span>
 </button>
 )
@@ -199,13 +199,12 @@ disabled={posting}
 style={{flex:1,border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',resize:'none' as const,color:'#1A1A1A',opacity:posting?.6:1,transition:'opacity .15s'}}
 />
 <button onClick={postComment} disabled={posting||!newComment.trim()} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'5px',background:posting||!newComment.trim()?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:posting||!newComment.trim()?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',flexShrink:0,minWidth:'52px'}}>
-{posting?<span style={{width:'12px',height:'12px',border:'1.5px solid #fff',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'spin .6s linear infinite'}}/>:'Post'}
+{posting?<span style={{width:'12px',height:'12px',border:'1.5px solid #fff',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite'}}/>:'Post'}
 </button>
 </div>
 </div>
 
 </div>
-<style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 </>
 )
 }

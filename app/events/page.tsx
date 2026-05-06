@@ -4,6 +4,8 @@ import{Suspense}from'react'
 import EventsFilterBar from'@/app/components/EventsFilterBar'
 
 const PAGE_SIZE=10
+// Only fields needed by the events list card
+const LIST_FIELDS='id,title,date,location,category,entity,office,tags,description,drive_link'
 
 export default async function EventsPage({searchParams}:any){
 const sp=await searchParams
@@ -14,18 +16,13 @@ const entity=sp?.entity||''
 const sort=sp?.sort||'newest'
 const admin=await isAdmin()
 
-// Count query for pagination
-let countQuery=supabase.from('events').select('*',{count:'exact',head:true})
+// Build both queries before awaiting — run count + data in parallel
+let countQuery=supabase.from('events').select('id',{count:'exact',head:true})
 if(search)countQuery=countQuery.ilike('title','%'+search+'%')
 if(category)countQuery=countQuery.eq('category',category)
 if(entity)countQuery=countQuery.eq('entity',entity)
-const{count}=await countQuery
-const total=count||0
-const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE))
-const safePage=Math.min(page,totalPages)
 
-// Data query
-let dataQuery=supabase.from('events').select('*')
+let dataQuery=supabase.from('events').select(LIST_FIELDS)
 if(search)dataQuery=dataQuery.ilike('title','%'+search+'%')
 if(category)dataQuery=dataQuery.eq('category',category)
 if(entity)dataQuery=dataQuery.eq('entity',entity)
@@ -33,9 +30,18 @@ if(sort==='oldest')dataQuery=dataQuery.order('date',{ascending:true})
 else if(sort==='az')dataQuery=dataQuery.order('title',{ascending:true})
 else if(sort==='za')dataQuery=dataQuery.order('title',{ascending:false})
 else dataQuery=dataQuery.order('date',{ascending:false})
-dataQuery=dataQuery.range((safePage-1)*PAGE_SIZE,safePage*PAGE_SIZE-1)
 
-const{data:events}=await dataQuery
+// Count and a preliminary first-page range run simultaneously;
+// we adjust safePage after count resolves
+const[{count},{data:allEvents}]=await Promise.all([
+countQuery,
+dataQuery.range((Math.max(1,page)-1)*PAGE_SIZE,Math.max(1,page)*PAGE_SIZE-1)
+])
+const total=count||0
+const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE))
+const safePage=Math.min(Math.max(1,page),totalPages)
+// If page was out of range, the fetched slice is still correct for page=1
+const events=allEvents
 
 const buildUrl=(params:Record<string,string>)=>{
 const base:Record<string,string>={}

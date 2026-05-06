@@ -35,7 +35,6 @@ animation:'toast-in .2s ease',
 <span style={{color:t.type==='error'?'#fca5a5':'#86efac'}}>{t.message}</span>
 </div>
 ))}
-<style>{`@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
 </div>
 )
 }
