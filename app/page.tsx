@@ -1,4 +1,5 @@
 import{getServerSupabase}from'@/app/lib/supabaseServer'
+import{isAdmin}from'@/app/lib/roles'
 import{Suspense}from'react'
 import FilterBar from'@/app/components/FilterBar'
 import EventPill from'@/app/components/EventPill'
@@ -34,10 +35,11 @@ if(category)calQuery=calQuery.eq('category',category)
 if(entity)calQuery=calQuery.eq('entity',entity)
 if(office)calQuery=calQuery.eq('office',office)
 
-// Run calendar events + recent events in parallel
-const[{data:events},{data:recentEvents}]=await Promise.all([
+// Run calendar events + recent events + admin check in parallel
+const[{data:events},{data:recentEvents},admin]=await Promise.all([
 calQuery,
-supabase.from('events').select(RECENT_FIELDS).order('date',{ascending:false}).limit(6)
+supabase.from('events').select(RECENT_FIELDS).order('date',{ascending:false}).limit(6),
+isAdmin(),
 ])
 
 // Preview images depend on event IDs — run immediately after events resolve
@@ -115,7 +117,10 @@ return(
 <a href={buildUrl({year:String(nextYear),month:String(nextMonth)})} style={{width:'28px',height:'28px',border:'1px solid #E5E7EB',borderRadius:'6px',background:'#fff',fontSize:'14px',color:'#374151',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>›</a>
 </div>
 <span style={{fontSize:'15px',fontWeight:600,color:'#1A1A1A'}}>{monthName} {year}</span>
+<div style={{display:'flex',alignItems:'center',gap:'10px'}}>
 <span style={{fontSize:'12px',color:'#6B7280'}}>{events?.length||0} events</span>
+{admin&&<a href='/admin/events/new' style={{background:'#FF6B00',color:'#fff',padding:'4px 12px',borderRadius:'6px',fontSize:'12px',fontWeight:500,textDecoration:'none',whiteSpace:'nowrap' as const}}>+ New</a>}
+</div>
 </div>
 
 {/* ── Desktop full grid ── */}
@@ -202,9 +207,11 @@ return(
 
 <div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Recent events</div>
 <div className='events-grid' style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
-{recentEvents?.map((ev:any)=>(
+{recentEvents?.map((ev:any,idx:number)=>(
 <a key={ev.id} href={'/events/'+ev.id} className='event-card'>
-<div className='event-card-inner' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'14px'}}>
+<div className='event-card-inner' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',overflow:'hidden'}}>
+<div style={{height:'4px',background:evColors[idx%evColors.length]}}/>
+<div style={{padding:'14px'}}>
 <div style={{fontSize:'11px',color:'#E65C00',fontWeight:500,marginBottom:'4px'}}>{new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
 <div style={{fontSize:'13.5px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
 {ev.description&&<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>{ev.description}</div>}
@@ -212,6 +219,7 @@ return(
 {ev.category&&<span style={{fontSize:'10px',background:'#FFE4D1',color:'#E65C00',padding:'1px 8px',borderRadius:'999px',fontWeight:500}}>{ev.category}</span>}
 {ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.entity}</span>}
 {ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.office}</span>}
+</div>
 </div>
 </div>
 </a>

@@ -34,8 +34,8 @@ return(
 <form action={updateEvent}>
 <input type='hidden' name='id' value={id}/>
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
-<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
-<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Event details</div>
+<div style={{padding:'12px 18px',borderBottom:'1px solid #F3F4F6'}}>
+<div style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase' as const,letterSpacing:'.07em'}}>Event details</div>
 </div>
 <div style={{padding:'18px',display:'flex',flexDirection:'column',gap:'14px'}}>
 <div>
@@ -101,9 +101,9 @@ timezoneOptions={TIMEZONE_KEYS}
 </form>
 
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
-<div style={{background:'#1A1A1A',padding:'12px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Preview images</div>
-<a href={'/events/'+id+'/upload'} style={{fontSize:'12px',background:'#FF6B00',color:'#fff',padding:'4px 12px',borderRadius:'5px',textDecoration:'none',fontWeight:500}}>+ Add more</a>
+<div style={{padding:'12px 18px',borderBottom:'1px solid #F3F4F6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+<div style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase' as const,letterSpacing:'.07em'}}>Preview images</div>
+<a href={'/events/'+id+'/upload'} style={{fontSize:'12px',color:'#FF6B00',fontWeight:500,textDecoration:'none'}}>+ Add more</a>
 </div>
 <div style={{padding:'16px'}}>
 {images&&images.length>0?(

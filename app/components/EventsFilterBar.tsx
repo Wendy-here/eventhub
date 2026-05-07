@@ -48,9 +48,9 @@ return qs?'/events?'+qs:'/events'
 const hasFilters=!!(search||category||entity||sort!=='newest')
 
 const sel=(active:boolean):React.CSSProperties=>({
-height:'28px',padding:'0 8px',
+height:'34px',padding:'0 12px',
 border:'1px solid '+(active?'#FF6B00':'#E5E7EB'),
-borderRadius:'6px',
+borderRadius:'8px',
 background:active?'#FFF3EB':'#ffffff',
 color:active?'#FF6B00':'#374151',
 fontSize:'12px',cursor:'pointer',outline:'none',
@@ -58,15 +58,15 @@ fontWeight:active?600:400,
 })
 
 return(
-<div className='filter-bar' style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 24px',height:'42px',display:'flex',alignItems:'center',gap:'8px'}}>
+<div className='filter-bar' style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 24px',minHeight:'50px',display:'flex',alignItems:'center',gap:'8px'}}>
 <form onSubmit={(e)=>{e.preventDefault();router.push(buildUrl({search:searchVal}))}} style={{display:'flex',alignItems:'center',position:'relative'}}>
-<svg style={{position:'absolute',left:'8px',color:'#9CA3AF',pointerEvents:'none'}} width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5'><circle cx='6.5' cy='6.5' r='5'/><path d='M11 11l3 3' strokeLinecap='round'/></svg>
+<svg style={{position:'absolute',left:'10px',color:'#9CA3AF',pointerEvents:'none'}} width='13' height='13' viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5'><circle cx='6.5' cy='6.5' r='5'/><path d='M11 11l3 3' strokeLinecap='round'/></svg>
 <input
 value={searchVal}
 onChange={(e)=>setSearchVal(e.target.value)}
 onBlur={()=>router.push(buildUrl({search:searchVal}))}
-placeholder='Search...'
-style={{height:'28px',width:'140px',border:'1px solid '+(search?'#FF6B00':'#E5E7EB'),borderRadius:'6px',padding:'0 10px 0 26px',fontSize:'12px',outline:'none',background:search?'#FFF3EB':'#ffffff',color:'#374151'}}
+placeholder='Search events…'
+style={{height:'34px',width:'160px',border:'1px solid '+(search?'#FF6B00':'#E5E7EB'),borderRadius:'8px',padding:'0 12px 0 30px',fontSize:'12px',outline:'none',background:search?'#FFF3EB':'#ffffff',color:'#374151'}}
 />
 </form>
 

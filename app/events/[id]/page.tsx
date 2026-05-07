@@ -81,6 +81,15 @@ Back to calendar
 </div>
 </div>
 
+<AttendanceBar
+eventId={id}
+eventTitle={event.title}
+initialAttendances={initialAttendances||[]}
+isAdmin={admin}
+userEmail={userEmail}
+userName={userName}
+/>
+
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px',marginBottom:'16px'}}>
 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}}>
 <div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280'}}>Media — {images?.length||0} photos</div>
@@ -108,15 +117,6 @@ Back to calendar
 </div>
 )}
 </div>
-
-<AttendanceBar
-eventId={id}
-eventTitle={event.title}
-initialAttendances={initialAttendances||[]}
-isAdmin={admin}
-userEmail={userEmail}
-userName={userName}
-/>
 
 <ReactionsComments eventId={id} initialReactions={initialReactions||[]} initialComments={initialComments||[]} userEmail={userEmail} userName={userName}/>
 

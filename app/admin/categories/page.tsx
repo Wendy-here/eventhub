@@ -36,8 +36,8 @@ return(
 </div>
 
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'20px'}}>
-<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
-<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Add new category</div>
+<div style={{padding:'12px 18px',borderBottom:'1px solid #F3F4F6'}}>
+<div style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase' as const,letterSpacing:'.07em'}}>Add new category</div>
 </div>
 <form action={addCategory} style={{padding:'18px',display:'flex',gap:'10px',alignItems:'flex-end',flexWrap:'wrap' as const}}>
 <div style={{flex:1,minWidth:'160px'}}>
@@ -53,8 +53,8 @@ return(
 </div>
 
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden'}}>
-<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
-<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Current categories ({categories?.length||0})</div>
+<div style={{padding:'12px 18px',borderBottom:'1px solid #F3F4F6'}}>
+<div style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase' as const,letterSpacing:'.07em'}}>Current categories ({categories?.length||0})</div>
 </div>
 <div style={{padding:'8px'}}>
 {categories&&categories.length>0?categories.map((cat:any)=>(

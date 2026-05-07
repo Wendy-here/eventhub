@@ -63,9 +63,9 @@ const officesForEntity=entity?OFFICES[entity]||[]:[]
 const hasFilters=!!(category||entity||office||search)
 
 const sel=(active:boolean)=>({
-height:'28px',padding:'0 8px',
+height:'34px',padding:'0 12px',
 border:'1px solid '+(active?'#FF6B00':'#E5E7EB'),
-borderRadius:'6px',
+borderRadius:'8px',
 background:active?'#FFF3EB':'#ffffff',
 color:active?'#FF6B00':'#374151',
 fontSize:'12px',fontFamily:'Noto Sans,sans-serif',
@@ -76,21 +76,21 @@ opacity:isPending?.6:1,
 } as React.CSSProperties)
 
 return(
-<div className='filter-bar' style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 16px',minHeight:'42px',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap' as const,paddingTop:'6px',paddingBottom:'6px',transition:'opacity .2s',opacity:isPending?.75:1}}>
-<span style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'.06em',marginRight:'4px'}}>Filter:</span>
+<div className='filter-bar' style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 16px',minHeight:'50px',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap' as const,paddingTop:'8px',paddingBottom:'8px',transition:'opacity .2s',opacity:isPending?.75:1}}>
 
 {/* Search input with debounce */}
 <div style={{position:'relative' as const,display:'flex',alignItems:'center'}}>
+<svg style={{position:'absolute',left:'10px',color:'#9CA3AF',pointerEvents:'none'}} width='13' height='13' viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5'><circle cx='6.5' cy='6.5' r='5'/><path d='M11 11l3 3' strokeLinecap='round'/></svg>
 <input
 value={searchInput}
 onChange={e=>setSearchInput(e.target.value)}
 placeholder='Search events…'
-style={{height:'28px',padding:'0 28px 0 8px',border:'1px solid '+(search?'#FF6B00':'#E5E7EB'),borderRadius:'6px',background:search?'#FFF3EB':'#ffffff',color:search?'#FF6B00':'#374151',fontSize:'12px',fontFamily:'Noto Sans,sans-serif',outline:'none',width:'140px',fontWeight:search?600:400,opacity:isPending?.6:1,transition:'opacity .15s'}}
+style={{height:'34px',padding:'0 28px 0 30px',border:'1px solid '+(search?'#FF6B00':'#E5E7EB'),borderRadius:'8px',background:search?'#FFF3EB':'#ffffff',color:search?'#FF6B00':'#374151',fontSize:'12px',fontFamily:'Noto Sans,sans-serif',outline:'none',width:'160px',fontWeight:search?600:400,opacity:isPending?.6:1,transition:'opacity .15s'}}
 />
 {searchInput&&(
 <button
 onClick={()=>{setSearchInput('');startTransition(()=>router.push(buildUrl({search:''})))}}
-style={{position:'absolute' as const,right:'5px',background:'none',border:'none',cursor:'pointer',color:'#9CA3AF',fontSize:'14px',lineHeight:1,padding:0,display:'flex',alignItems:'center'}}
+style={{position:'absolute' as const,right:'8px',background:'none',border:'none',cursor:'pointer',color:'#9CA3AF',fontSize:'14px',lineHeight:1,padding:0,display:'flex',alignItems:'center'}}
 >×</button>
 )}
 </div>

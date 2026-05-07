@@ -109,8 +109,8 @@ return(
 
 <form onSubmit={handleSubmit}>
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
-<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
-<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Event details</div>
+<div style={{padding:'12px 18px',borderBottom:'1px solid #F3F4F6'}}>
+<div style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase' as const,letterSpacing:'.07em'}}>Event details</div>
 </div>
 <div style={{padding:'18px',display:'flex',flexDirection:'column',gap:'14px'}}>
 <div>
@@ -161,9 +161,8 @@ Category
 </div>
 
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
-<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
-<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Media and album</div>
-<div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginTop:'2px'}}>Upload preview images and link full album</div>
+<div style={{padding:'12px 18px',borderBottom:'1px solid #F3F4F6'}}>
+<div style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase' as const,letterSpacing:'.07em'}}>Media and album</div>
 </div>
 <div style={{padding:'18px',display:'flex',flexDirection:'column',gap:'14px'}}>
 <div>

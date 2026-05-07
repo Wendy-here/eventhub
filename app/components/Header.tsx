@@ -1,6 +1,8 @@
 'use client'
 import{useState,useRef,useEffect}from'react'
+import{usePathname}from'next/navigation'
 import Image from'next/image'
+import Link from'next/link'
 import{signOut,setPreviewRole}from'@/app/lib/account-actions'
 
 type Props={initials:string,name:string,email:string,isRealAdmin:boolean,isPreviewing:boolean}
@@ -9,18 +11,31 @@ export default function Header({initials,name,email,isRealAdmin,isPreviewing}:Pr
 const[menuOpen,setMenuOpen]=useState(false)
 const[dropOpen,setDropOpen]=useState(false)
 const dropRef=useRef<HTMLDivElement>(null)
+const pathname=usePathname()
 
-// Close dropdown on outside click
 useEffect(()=>{
 const h=(e:MouseEvent)=>{if(dropRef.current&&!dropRef.current.contains(e.target as Node))setDropOpen(false)}
 document.addEventListener('mousedown',h)
 return()=>document.removeEventListener('mousedown',h)
 },[])
 
-const navLink=(href:string,icon:React.ReactNode,label:string)=>(
-<a href={href} onClick={()=>setMenuOpen(false)} style={{padding:'10px 12px',borderRadius:'8px',fontSize:'14px',fontWeight:500,color:'#374151',textDecoration:'none',display:'flex',alignItems:'center',gap:'10px'}}>
+const isActive=(href:string)=>href==='/'?pathname===href:pathname.startsWith(href)
+
+const navStyle=(href:string):React.CSSProperties=>({
+padding:'5px 10px',
+borderRadius:'6px',
+fontSize:'13px',
+fontWeight:isActive(href)?600:500,
+color:isActive(href)?'#FF6B00':'#374151',
+background:isActive(href)?'#FFF3EB':'transparent',
+textDecoration:'none',
+transition:'background .15s, color .15s',
+})
+
+const mobileNavLink=(href:string,icon:React.ReactNode,label:string)=>(
+<Link href={href} onClick={()=>setMenuOpen(false)} style={{padding:'10px 12px',borderRadius:'8px',fontSize:'14px',fontWeight:500,color:'#374151',textDecoration:'none',display:'flex',alignItems:'center',gap:'10px'}}>
 {icon}<span>{label}</span>
-</a>
+</Link>
 )
 
 return(
@@ -34,10 +49,9 @@ return(
 <div className='desktop-only' style={{width:'1px',height:'26px',background:'#E5E7EB',margin:'0 2px',flexShrink:0}}/>
 
 <nav className='desktop-only' style={{display:'flex',gap:'2px'}}>
-<a href='/' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>Calendar</a>
-<a href='/events' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>All Events</a>
-<a href='/images' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>Images</a>
-<a href='/admin/categories' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>Categories</a>
+<Link href='/' style={navStyle('/')}>Calendar</Link>
+<Link href='/events' style={navStyle('/events')}>All Events</Link>
+<Link href='/images' style={navStyle('/images')}>Images</Link>
 </nav>
 
 <div style={{flex:1}}/>
@@ -49,7 +63,7 @@ return(
 </div>
 </form>
 
-<a href='/admin/events/new' className='desktop-only' style={{background:'#FF6B00',color:'#fff',padding:'7px 14px',borderRadius:'8px',fontSize:'13px',fontWeight:500,textDecoration:'none',whiteSpace:'nowrap'}}>+ New event</a>
+<Link href='/admin/events/new' className='desktop-only' style={{background:'#FF6B00',color:'#fff',padding:'7px 14px',borderRadius:'8px',fontSize:'13px',fontWeight:500,textDecoration:'none',whiteSpace:'nowrap'}}>+ New event</Link>
 
 {/* Avatar + dropdown */}
 <div ref={dropRef} style={{position:'relative',flexShrink:0}}>
@@ -67,7 +81,6 @@ style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'n
 
 {dropOpen&&(
 <div style={{position:'absolute',top:'calc(100% + 6px)',right:0,width:'260px',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',boxShadow:'0 8px 32px rgba(0,0,0,.1)',overflow:'hidden',zIndex:100}}>
-{/* User info */}
 <div style={{padding:'14px 16px',borderBottom:'1px solid #F3F4F6'}}>
 <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
 <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'#FF6B00',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'13px',fontWeight:700,color:'#fff',flexShrink:0}}>{initials}</div>
@@ -78,20 +91,19 @@ style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'n
 </div>
 </div>
 
-{/* Preview as member — admin only */}
 {isRealAdmin&&(
 <div style={{borderBottom:'1px solid #F3F4F6'}}>
 {isPreviewing?(
 <form action={setPreviewRole.bind(null,'off')}>
 <button type='submit' style={{width:'100%',padding:'12px 16px',background:'#FFF3EB',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',fontSize:'13px',fontWeight:500,color:'#FF6B00',textAlign:'left' as const}}>
-<span style={{fontSize:'16px'}}>👁</span>
+<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>
 <span>Exit member preview</span>
 </button>
 </form>
 ):(
 <form action={setPreviewRole.bind(null,'member')}>
 <button type='submit' style={{width:'100%',padding:'12px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',fontSize:'13px',color:'#374151',textAlign:'left' as const}}>
-<span style={{fontSize:'16px'}}>👁</span>
+<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>
 <span>Preview as Member</span>
 </button>
 </form>
@@ -99,10 +111,18 @@ style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'n
 </div>
 )}
 
-{/* Sign out */}
+{isRealAdmin&&(
+<div style={{borderBottom:'1px solid #F3F4F6'}}>
+<Link href='/admin/categories' onClick={()=>setDropOpen(false)} style={{display:'flex',alignItems:'center',gap:'10px',padding:'12px 16px',fontSize:'13px',color:'#374151',textDecoration:'none'}}>
+<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z'/><line x1='7' y1='7' x2='7.01' y2='7'/></svg>
+<span>Categories</span>
+</Link>
+</div>
+)}
+
 <form action={signOut}>
 <button type='submit' style={{width:'100%',padding:'12px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',fontSize:'13px',color:'#374151',textAlign:'left' as const}}>
-<span style={{fontSize:'16px'}}>🚪</span>
+<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/><polyline points='16 17 21 12 16 7'/><line x1='21' y1='12' x2='9' y2='12'/></svg>
 <span>Sign out</span>
 </button>
 </form>
@@ -124,12 +144,12 @@ style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'n
 {menuOpen&&(
 <div className='mobile-only' style={{background:'#ffffff',borderTop:'1px solid #F3F4F6',padding:'12px 16px 16px'}}>
 <nav style={{display:'flex',flexDirection:'column' as const,gap:'2px',marginBottom:'12px'}}>
-{navLink('/',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>,'Calendar')}
-{navLink('/events',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/></svg>,'All Events')}
-{navLink('/images',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>,'Images')}
-{navLink('/admin/categories',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z'/><line x1='7' y1='7' x2='7.01' y2='7'/></svg>,'Categories')}
+{mobileNavLink('/',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>,'Calendar')}
+{mobileNavLink('/events',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/></svg>,'All Events')}
+{mobileNavLink('/images',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>,'Images')}
+{isRealAdmin&&mobileNavLink('/admin/categories',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z'/><line x1='7' y1='7' x2='7.01' y2='7'/></svg>,'Categories')}
 </nav>
-<a href='/admin/events/new' style={{display:'block',background:'#FF6B00',color:'#fff',padding:'10px 16px',borderRadius:'8px',fontSize:'14px',fontWeight:500,textDecoration:'none',textAlign:'center' as const,marginBottom:'12px'}}>+ New event</a>
+<Link href='/admin/events/new' style={{display:'block',background:'#FF6B00',color:'#fff',padding:'10px 16px',borderRadius:'8px',fontSize:'14px',fontWeight:500,textDecoration:'none',textAlign:'center' as const,marginBottom:'12px'}}>+ New event</Link>
 <form method='GET' action='/'>
 <div style={{position:'relative',display:'flex',alignItems:'center'}}>
 <svg style={{position:'absolute',left:'10px',color:'#9CA3AF'}} width='13' height='13' viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5'><circle cx='6.5' cy='6.5' r='5'/><path d='M11 11l3 3' strokeLinecap='round'/></svg>
@@ -141,7 +161,6 @@ style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'n
 
 </header>
 
-{/* Preview mode banner */}
 {isPreviewing&&(
 <div style={{background:'#FFF3EB',borderBottom:'1px solid #FFD4B8',padding:'8px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px',position:'sticky',top:'52px',zIndex:49}}>
 <span style={{fontSize:'13px',color:'#C2410C',fontWeight:500}}>👁 Previewing as Member — admin features are hidden</span>
