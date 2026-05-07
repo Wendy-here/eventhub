@@ -9,7 +9,7 @@ import{allZoneTimes}from'@/app/lib/timezones'
 export default async function EventPage(props:any){
 const supabase=await getServerSupabase()
 const{id}=await props.params
-const[{data:event},{data:images},{data:initialReactions},{data:initialComments},{data:initialAttendances},admin,currentUser]=await Promise.all([
+const[{data:event},{data:images},{data:initialReactions},{data:initialComments},attendancesResult,admin,currentUser]=await Promise.all([
 supabase.from('events').select('*').eq('id',id).single(),
 supabase.from('event_images').select('*').eq('event_id',id).order('sort_order'),
 supabase.from('reactions').select('*').eq('event_id',id),
@@ -18,6 +18,8 @@ supabase.from('attendances').select('*').eq('event_id',id),
 isAdmin(),
 getCurrentUser(),
 ])
+if(attendancesResult.error)console.warn('[attendances]',attendancesResult.error.message)
+const initialAttendances=attendancesResult.data||[]
 if(!event)return notFound()
 const userEmail=currentUser?.email||''
 const userName=currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'User'

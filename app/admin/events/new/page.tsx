@@ -1,6 +1,7 @@
 'use client'
 import{useState,useCallback,useEffect}from'react'
 import{supabase}from'@/app/lib/supabase'
+import{createEvent}from'./actions'
 import{useRouter}from'next/navigation'
 import DateTimePicker from'@/app/components/DateTimePicker'
 import{TIMEZONE_KEYS}from'@/app/lib/timezones'
@@ -67,38 +68,20 @@ const[formError,setFormError]=useState('')
 const handleSubmit=async(e:React.FormEvent<HTMLFormElement>)=>{
 e.preventDefault()
 const form=new FormData(e.currentTarget)
-const title=form.get('title') as string
 const date=form.get('date') as string
 if(!date){setDateError('Please select a day, month, and year.');return}
 setDateError('')
 setFormError('')
 setSaving(true)
-const description=form.get('description') as string
-const location=form.get('location') as string
-const tagsRaw=form.get('tags') as string
-const category=form.get('category') as string
-const entity=form.get('entity') as string
-const office=form.get('office') as string
-const event_time=form.get('event_time') as string
-const timezone=form.get('timezone') as string
-const tags=tagsRaw?tagsRaw.split(',').map((t:string)=>t.trim()).filter(Boolean):[]
 
-const{data:event,error}=await supabase.from('events').insert({
-title,date,description,location,tags,
-drive_link:driveLink||null,
-category:category||null,
-entity:entity||null,
-office:office||null,
-event_time:event_time||null,
-timezone:timezone||null,
-}).select().single()
-if(error){
-const msg=error.message||error.code||'Unknown error'
-console.error('[createEvent]',error)
-setFormError(msg)
+// Insert via server action — authenticated with user's session cookies
+const result=await createEvent(form)
+if('error' in result){
+setFormError(result.error)
 setSaving(false)
 return
 }
+const event={id:result.id}
 
 const rows:any[]=[]
 for(let i=0;i<files.length;i++){
@@ -210,7 +193,7 @@ style={{border:'2px dashed '+(dragOver?'#FF6B00':'#E5E7EB'),borderRadius:'8px',p
 </div>
 <div style={{borderTop:'1px solid #F3F4F6',paddingTop:'14px'}}>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Google Drive full album link <span style={{fontWeight:400,color:'#9CA3AF'}}>(optional)</span></label>
-<input value={driveLink} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setDriveLink(e.target.value)} placeholder='https://drive.google.com/drive/folders/...' style={inp}/>
+<input name='drive_link' value={driveLink} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setDriveLink(e.target.value)} placeholder='https://drive.google.com/drive/folders/...' style={inp}/>
 <div style={{fontSize:'11px',color:'#9CA3AF',marginTop:'4px'}}>Viewers can access the full album from this link</div>
 </div>
 </div>
