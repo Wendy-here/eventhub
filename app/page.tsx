@@ -20,7 +20,8 @@ const firstDateStr=`${year}-${pad(month)}-01`
 const monthName=new Date(year,month-1,1).toLocaleString('default',{month:'long'})
 
 // Only fetch fields needed by the calendar pill and mobile list
-const CALENDAR_FIELDS='id,title,date,location,category,entity,office,event_time,timezone,description'
+// event_time + timezone omitted until ALTER TABLE migration has been run
+const CALENDAR_FIELDS='id,title,date,location,category,entity,office,description'
 const RECENT_FIELDS='id,title,date,description,category,entity,office'
 
 const nextMonthFirstStr=month===12?`${year+1}-01-01`:`${year}-${pad(month+1)}-01`
@@ -34,7 +35,7 @@ if(entity)calQuery=calQuery.eq('entity',entity)
 if(office)calQuery=calQuery.eq('office',office)
 
 // Run calendar events + recent events in parallel
-const[{data:events,error:calError},{data:recentEvents}]=await Promise.all([
+const[{data:events},{data:recentEvents}]=await Promise.all([
 calQuery,
 supabase.from('events').select(RECENT_FIELDS).order('date',{ascending:false}).limit(6)
 ])
@@ -94,15 +95,6 @@ return(
 <FilterBar/>
 </Suspense>
 
-{/* TEMP DEBUG — remove once calendar is confirmed working */}
-<div style={{background:'#1e293b',color:'#94a3b8',fontFamily:'monospace',fontSize:'11px',padding:'8px 16px',lineHeight:1.7}}>
-<span style={{color:'#f59e0b',fontWeight:700}}>DEBUG </span>
-query: {firstDateStr} → {nextMonthFirstStr} |
-cal_rows: <span style={{color:events&&events.length>0?'#4ade80':'#f87171'}}>{events?.length??'null'}</span> |
-recent_rows: <span style={{color:recentEvents&&recentEvents.length>0?'#4ade80':'#f87171'}}>{recentEvents?.length??'null'}</span> |
-{calError&&<span style={{color:'#f87171'}}> ERROR: {calError.message}</span>}
-{events&&events.length>0&&<span> first_date_raw: "{events[0].date}"</span>}
-</div>
 
 <div className='page-padding' style={{padding:'20px 24px'}}>
 <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginBottom:'16px',flexWrap:'wrap' as const,gap:'12px'}}>

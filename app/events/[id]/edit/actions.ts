@@ -14,8 +14,6 @@ const drive_link=formData.get('drive_link') as string
 const category=formData.get('category') as string
 const entity=formData.get('entity') as string
 const office=formData.get('office') as string
-const event_time=formData.get('event_time') as string
-const timezone=formData.get('timezone') as string
 const tagsRaw=formData.get('tags') as string
 const tags=tagsRaw?tagsRaw.split(',').map((t:string)=>t.trim()).filter(Boolean):[]
 const{error}=await supabase.from('events').update({
@@ -24,8 +22,6 @@ drive_link:drive_link||null,
 category:category||null,
 entity:entity||null,
 office:office||null,
-event_time:event_time||null,
-timezone:timezone||null,
 }).eq('id',id)
 if(error){console.error('update error:',error);return}
 revalidatePath('/')
