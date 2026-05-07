@@ -34,7 +34,7 @@ if(entity)calQuery=calQuery.eq('entity',entity)
 if(office)calQuery=calQuery.eq('office',office)
 
 // Run calendar events + recent events in parallel
-const[{data:events},{data:recentEvents}]=await Promise.all([
+const[{data:events,error:calError},{data:recentEvents}]=await Promise.all([
 calQuery,
 supabase.from('events').select(RECENT_FIELDS).order('date',{ascending:false}).limit(6)
 ])
@@ -93,6 +93,16 @@ return(
 <Suspense fallback={<div style={{height:'42px',background:'#F3F4F6',borderBottom:'1px solid #E5E7EB'}}/>}>
 <FilterBar/>
 </Suspense>
+
+{/* TEMP DEBUG — remove once calendar is confirmed working */}
+<div style={{background:'#1e293b',color:'#94a3b8',fontFamily:'monospace',fontSize:'11px',padding:'8px 16px',lineHeight:1.7}}>
+<span style={{color:'#f59e0b',fontWeight:700}}>DEBUG </span>
+query: {firstDateStr} → {nextMonthFirstStr} |
+cal_rows: <span style={{color:events&&events.length>0?'#4ade80':'#f87171'}}>{events?.length??'null'}</span> |
+recent_rows: <span style={{color:recentEvents&&recentEvents.length>0?'#4ade80':'#f87171'}}>{recentEvents?.length??'null'}</span> |
+{calError&&<span style={{color:'#f87171'}}> ERROR: {calError.message}</span>}
+{events&&events.length>0&&<span> first_date_raw: "{events[0].date}"</span>}
+</div>
 
 <div className='page-padding' style={{padding:'20px 24px'}}>
 <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginBottom:'16px',flexWrap:'wrap' as const,gap:'12px'}}>
