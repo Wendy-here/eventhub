@@ -14,28 +14,27 @@ const STATUSES:[string,'yes'|'maybe'|'no',string,string][]=[
 
 export default function AttendanceBar({eventId,eventTitle,initialAttendances,isAdmin,userEmail,userName}:Props){
 const[attendances,setAttendances]=useState<Attendance[]>(initialAttendances)
-const[saving,setSaving]=useState(false)
+const[pendingStatus,setPendingStatus]=useState<'yes'|'maybe'|'no'|null>(null)
 const[error,setError]=useState('')
 const[showList,setShowList]=useState(false)
 const{toasts,show:showToast}=useToast()
 
+const isUpdating=pendingStatus!==null
 const myStatus=useMemo(()=>attendances.find(a=>a.user_email===userEmail)?.status,[attendances,userEmail])
 const countOf=(s:string)=>attendances.filter(a=>a.status===s).length
 
 const respond=async(status:'yes'|'maybe'|'no')=>{
-if(!userEmail||saving)return
-setSaving(true)
+if(!userEmail||isUpdating)return
+setPendingStatus(status)
 setError('')
 const existing=attendances.find(a=>a.user_email===userEmail)
 
 try{
 if(existing?.status===status){
-// Same status clicked → toggle off (delete)
 const{error:e}=await supabase.from('attendances').delete().eq('id',existing.id)
 if(e)throw e
 setAttendances(prev=>prev.filter(a=>a.id!==existing.id))
 }else{
-// New status or switching status → upsert (atomic, no race condition)
 const{data,error:e}=await supabase
 .from('attendances')
 .upsert(
@@ -59,7 +58,7 @@ const msg=e?.message||'Could not save. Please try again.'
 setError(msg)
 showToast(msg,'error')
 }finally{
-setSaving(false)
+setPendingStatus(null)
 }
 }
 
@@ -120,12 +119,13 @@ return(
 <div style={{display:'flex',gap:'8px',flexWrap:'wrap' as const,marginBottom:error?'10px':0}}>
 {STATUSES.map(([icon,value,label,activeColor])=>{
 const active=myStatus===value
+const spinning=pendingStatus===value
 const count=countOf(value)
 return(
 <button
 key={value}
 onClick={()=>respond(value)}
-disabled={saving||!userEmail}
+disabled={isUpdating||!userEmail}
 style={{
 display:'flex',alignItems:'center',gap:'6px',
 padding:'7px 14px',borderRadius:'8px',
@@ -133,16 +133,16 @@ border:'1.5px solid '+(active?activeColor:'#E5E7EB'),
 background:active?activeColor+'18':'#ffffff',
 color:active?activeColor:'#374151',
 fontSize:'13px',fontWeight:active?600:400,
-cursor:saving||!userEmail?'not-allowed':'pointer',
-transition:'all .15s',opacity:saving?.7:1,
+cursor:isUpdating||!userEmail?'not-allowed':'pointer',
+transition:'all .15s',opacity:isUpdating&&!spinning?.6:1,
 }}
 >
-{saving&&active
+{spinning
 ?<span style={{width:'12px',height:'12px',border:'1.5px solid currentColor',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite'}}/>
 :<span style={{fontSize:'15px'}}>{icon}</span>
 }
-<span>{label}</span>
-{count>0&&<span style={{fontSize:'11px',color:active?activeColor:'#9CA3AF',fontWeight:600}}>· {count}</span>}
+<span>{spinning?'Saving…':label}</span>
+{count>0&&!spinning&&<span style={{fontSize:'11px',color:active?activeColor:'#9CA3AF',fontWeight:600}}>· {count}</span>}
 </button>
 )
 })}
