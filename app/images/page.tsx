@@ -29,8 +29,10 @@ return(
 </a>
 ))}
 {(!images||images.length===0)&&(
-<div style={{gridColumn:'1/-1',padding:'60px',textAlign:'center',color:'#9CA3AF',fontSize:'14px'}}>
-No images yet. Upload photos to events to see them here.
+<div className='empty-state' style={{gridColumn:'1/-1'}}>
+<svg width='44' height='44' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>
+<span>No images yet</span>
+<span style={{fontSize:'12px',color:'#C4C9D4'}}>Upload photos to events to see them here</span>
 </div>
 )}
 </div>

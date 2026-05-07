@@ -69,6 +69,59 @@ a:hover {
   opacity: 0.88;
 }
 
+/* ── Event card hover lift ───────────────────────────── */
+a.event-card {
+  display: block;
+  text-decoration: none;
+  border-radius: 10px;
+  outline: none;
+}
+/* Neutralise the global a:hover orange tint on cards */
+a.event-card:hover {
+  background: transparent !important;
+  color: inherit !important;
+}
+.event-card-inner {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  will-change: transform;
+}
+a.event-card:hover .event-card-inner {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0,0,0,.09);
+  border-color: #d1d5db !important;
+}
+
+/* ── Calendar cell overflow pill ────────────────────── */
+.cal-overflow-pill {
+  font-size: 10px;
+  color: #9CA3AF;
+  font-weight: 500;
+  padding: 1px 5px;
+  margin-top: 1px;
+  border-radius: 4px;
+  background: #F3F4F6;
+  display: inline-block;
+  line-height: 1.6;
+  cursor: default;
+  user-select: none;
+}
+
+/* ── Empty states ────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: #9CA3AF;
+  font-size: 13px;
+  text-align: center;
+}
+.empty-state svg {
+  opacity: .45;
+}
+
 /* ── Shared animations ──────────────────────────────── */
 @keyframes sk-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
 @keyframes att-spin  { to { transform: rotate(360deg) } }

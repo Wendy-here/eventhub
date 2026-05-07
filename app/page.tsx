@@ -131,9 +131,7 @@ return(
 {cell.day&&(
 <>
 <div style={{fontSize:'11.5px',fontWeight:cell.date===todayStr?700:500,color:cell.date===todayStr?'#FF6B00':'#6B7280',marginBottom:'3px'}}>{cell.day}</div>
-{(eventsByDate[cell.date!]||[]).map((ev:any,ei:number)=>(
-<EventPill key={ev.id} ev={{...ev,firstImage:firstImageByEvent[ev.id]}} color={evColors[ei%evColors.length]}/>
-))}
+{(()=>{const ce=eventsByDate[cell.date!]||[];const overflow=ce.length-2;return(<>{ce.slice(0,2).map((ev:any,ei:number)=>(<EventPill key={ev.id} ev={{...ev,firstImage:firstImageByEvent[ev.id]}} color={evColors[ei%evColors.length]}/>))}{overflow>0&&<span className='cal-overflow-pill'>+{overflow} more</span>}</>)})()}
 </>
 )}
 </div>
@@ -179,10 +177,10 @@ Events this month ({events?.length||0})
 const d=new Date(ev.date.slice(0,10)+'T00:00:00')
 const dateLabel=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})
 return(
-<a key={ev.id} href={'/events/'+ev.id} style={{textDecoration:'none',display:'block',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'12px 14px'}}>
+<a key={ev.id} href={'/events/'+ev.id} className='event-card' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'12px 14px'}}>
 <div style={{fontSize:'11px',color:'#FF6B00',fontWeight:500,marginBottom:'3px'}}>{dateLabel}</div>
 <div style={{fontSize:'14px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
-{ev.location&&<div style={{fontSize:'12px',color:'#6B7280',marginBottom:'4px'}}>📍 {ev.location}</div>}
+{ev.location&&<div style={{fontSize:'12px',color:'#6B7280',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}><svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z'/><circle cx='12' cy='10' r='3'/></svg>{ev.location}</div>}
 <div style={{display:'flex',gap:'5px',flexWrap:'wrap' as const}}>
 {ev.category&&<span style={{fontSize:'10px',background:'#FFE4D1',color:'#E65C00',padding:'1px 8px',borderRadius:'999px',fontWeight:500}}>{ev.category}</span>}
 {ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.entity}</span>}
@@ -192,7 +190,10 @@ return(
 })}
 </div>
 ):(
-<div style={{padding:'32px',textAlign:'center' as const,color:'#9CA3AF',fontSize:'13px'}}>No events this month</div>
+<div className='empty-state'>
+<svg width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>
+<span>No events this month</span>
+</div>
 )}
 </div>
 </div>
@@ -202,8 +203,8 @@ return(
 <div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Recent events</div>
 <div className='events-grid' style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
 {recentEvents?.map((ev:any)=>(
-<a key={ev.id} href={'/events/'+ev.id} style={{textDecoration:'none'}}>
-<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'14px'}}>
+<a key={ev.id} href={'/events/'+ev.id} className='event-card'>
+<div className='event-card-inner' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'14px'}}>
 <div style={{fontSize:'11px',color:'#E65C00',fontWeight:500,marginBottom:'4px'}}>{new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
 <div style={{fontSize:'13.5px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
 {ev.description&&<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>{ev.description}</div>}

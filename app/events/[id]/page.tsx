@@ -40,7 +40,7 @@ Back to calendar
 <h1 style={{fontSize:'24px',fontWeight:700,color:'#1A1A1A',letterSpacing:'-.4px',margin:'0 0 10px',lineHeight:1.25}}>{event.title}</h1>
 <div style={{display:'flex',flexDirection:'column' as const,gap:'4px'}}>
 <div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13.5px',color:'#374151',fontWeight:500}}>
-<span style={{fontSize:'15px'}}>📅</span>
+<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' style={{flexShrink:0}}><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>
 <span>{date}</span>
 </div>
 {event.event_time&&event.timezone&&(
@@ -56,7 +56,7 @@ Back to calendar
 )}
 {event.location&&(
 <div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13px',color:'#6B7280'}}>
-<span style={{fontSize:'15px'}}>📍</span>
+<svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' style={{flexShrink:0}}><path d='M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z'/><circle cx='12' cy='10' r='3'/></svg>
 <span>{event.location}</span>
 </div>
 )}
@@ -101,9 +101,10 @@ Back to calendar
 ))}
 </div>
 ):(
-<div style={{padding:'32px',textAlign:'center' as const,color:'#9CA3AF',fontSize:'13px',background:'#F9FAFB',borderRadius:'8px',border:'1px dashed #E5E7EB'}}>
-No preview images yet
-{admin&&<><br/><a href={'/events/'+id+'/upload'} style={{color:'#FF6B00',textDecoration:'none',fontWeight:500,marginTop:'6px',display:'inline-block'}}>+ Upload images</a></>}
+<div className='empty-state' style={{background:'#F9FAFB',borderRadius:'8px',border:'1px dashed #E5E7EB'}}>
+<svg width='36' height='36' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>
+<span>No preview images yet</span>
+{admin&&<a href={'/events/'+id+'/upload'} style={{color:'#FF6B00',textDecoration:'none',fontWeight:500,fontSize:'12px'}}>+ Upload images</a>}
 </div>
 )}
 </div>
