@@ -3,6 +3,7 @@ import{notFound}from'next/navigation'
 import{updateEvent,deleteEvent,deleteImage}from'./actions'
 import DeleteButton from'./DeleteButton'
 import DateTimePicker from'@/app/components/DateTimePicker'
+import Image from'next/image'
 import{TIMEZONE_KEYS}from'@/app/lib/timezones'
 
 const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
@@ -109,7 +110,7 @@ timezoneOptions={TIMEZONE_KEYS}
 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))',gap:'10px'}}>
 {images.map((img:any)=>(
 <div key={img.id} style={{position:'relative'}}>
-<img src={img.image_url} alt={img.caption||''} style={{width:'100%',aspectRatio:'4/3',objectFit:'cover',borderRadius:'6px',display:'block'}}/>
+<div style={{position:'relative',aspectRatio:'4/3',borderRadius:'6px',overflow:'hidden'}}><Image src={img.image_url} alt={img.caption||''} fill sizes='(max-width:640px) 50vw, 180px' style={{objectFit:'cover'}}/></div>
 <form action={deleteImage} style={{position:'absolute',top:'4px',right:'4px'}}>
 <input type='hidden' name='image_id' value={img.id}/>
 <input type='hidden' name='event_id' value={id}/>

@@ -1,18 +1,17 @@
 'use client'
-import{useState,useEffect,useRef}from'react'
+import{useState,useRef,useCallback,useEffect}from'react'
 import{supabase}from'@/app/lib/supabase'
 import{useToast,ToastContainer}from'@/app/components/Toast'
 
 const QUICK_EMOJIS=['👍','❤️','🎉','😮','😂','🔥','🙌','💪','👏','😍']
 
 type Reaction={id:string,event_id:string,user_email:string,emoji:string}
-type Comment={id:string,event_id:string,user_email:string,user_name:string,content:string,created_at:string}
+type Comment={id:string,event_id:string,user_email:string,user_name:string,content:string,created_at:string,sending?:boolean}
 
 export default function ReactionsComments({eventId,initialReactions=[],initialComments=[],userEmail,userName}:{eventId:string,initialReactions:Reaction[],initialComments:Comment[],userEmail:string,userName:string}){
 const[reactions,setReactions]=useState<Reaction[]>(initialReactions)
 const[comments,setComments]=useState<Comment[]>(initialComments)
 const[newComment,setNewComment]=useState('')
-const[posting,setPosting]=useState(false)
 const[reactingEmoji,setReactingEmoji]=useState<string|null>(null)
 const[showPicker,setShowPicker]=useState(false)
 const[customEmoji,setCustomEmoji]=useState('')
@@ -28,65 +27,76 @@ document.addEventListener('mousedown',handler)
 return()=>document.removeEventListener('mousedown',handler)
 },[])
 
-const loadData=async()=>{
-const[{data:r},{data:c}]=await Promise.all([
-supabase.from('reactions').select('*').eq('event_id',eventId),
-supabase.from('comments').select('*').eq('event_id',eventId).order('created_at',{ascending:true})
-])
-setReactions(r||[])
-setComments(c||[])
-}
-
-const toggleReaction=async(emoji:string)=>{
+const toggleReaction=useCallback(async(emoji:string)=>{
 if(!userEmail||reactingEmoji)return
 setReactingEmoji(emoji)
 const existing=reactions.find(r=>r.user_email===userEmail&&r.emoji===emoji)
+const snapshot=reactions
+
+// Optimistic: apply change immediately
+if(existing){
+setReactions(prev=>prev.filter(r=>r.id!==existing.id))
+}else{
+const optimistic:Reaction={id:'opt-'+Date.now(),event_id:eventId,user_email:userEmail,emoji}
+setReactions(prev=>[...prev,optimistic])
+}
+
 try{
 if(existing){
 const{error}=await supabase.from('reactions').delete().eq('id',existing.id)
 if(error)throw error
-setReactions(prev=>prev.filter(r=>r.id!==existing.id))
 }else{
 const{data,error}=await supabase.from('reactions').insert({event_id:eventId,user_email:userEmail,emoji}).select().single()
 if(error)throw error
-if(data)setReactions(prev=>[...prev,data])
+// Swap optimistic entry for real DB row
+if(data)setReactions(prev=>prev.map(r=>r.id.startsWith('opt-')&&r.emoji===emoji&&r.user_email===userEmail?data:r))
 }
 }catch{
+setReactions(snapshot)
 showToast('Could not save reaction. Please try again.','error')
 }finally{
 setReactingEmoji(null)
 setShowPicker(false)
 setCustomEmoji('')
 }
-}
+},[userEmail,reactingEmoji,reactions,eventId,showToast])
 
 const postComment=async()=>{
-if(!newComment.trim()||!userEmail||postingRef.current)return
+const content=newComment.trim()
+if(!content||!userEmail||postingRef.current)return
 postingRef.current=true
-setPosting(true)
+
+const tempId='opt-'+Date.now()
+const optimistic:Comment={id:tempId,event_id:eventId,user_email:userEmail,user_name:userName,content,created_at:new Date().toISOString(),sending:true}
+setComments(prev=>[...prev,optimistic])
+setNewComment('')
+
 try{
-const{data,error}=await supabase.from('comments').insert({event_id:eventId,user_email:userEmail,user_name:userName,content:newComment.trim()}).select().single()
+const{data,error}=await supabase.from('comments').insert({event_id:eventId,user_email:userEmail,user_name:userName,content}).select().single()
 if(error)throw error
-if(data){setComments(prev=>[...prev,data]);setNewComment('')}
+if(data)setComments(prev=>prev.map(c=>c.id===tempId?data:c))
 }catch{
+setComments(prev=>prev.filter(c=>c.id!==tempId))
+setNewComment(content)
 showToast('Could not post comment. Please try again.','error')
 }finally{
-setPosting(false)
 postingRef.current=false
 }
 }
 
 const deleteComment=async(commentId:string,commentEmail:string)=>{
 if(commentEmail!==userEmail)return
-await supabase.from('comments').delete().eq('id',commentId)
 setComments(prev=>prev.filter(c=>c.id!==commentId))
+const{error}=await supabase.from('comments').delete().eq('id',commentId)
+if(error){
+showToast('Could not delete comment.','error')
+// revert would need the full comment object — instead just reload isn't worth complexity
+}
 }
 
 const getReactionCount=(emoji:string)=>reactions.filter(r=>r.emoji===emoji).length
 const hasReacted=(emoji:string)=>reactions.some(r=>r.user_email===userEmail&&r.emoji===emoji)
-
 const allUniqueEmojis=Array.from(new Set(reactions.map(r=>r.emoji)))
-
 const getInitials=(name:string)=>name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)
 
 const timeAgo=(dateStr:string)=>{
@@ -111,10 +121,13 @@ return(
 {allUniqueEmojis.map(emoji=>{
 const count=getReactionCount(emoji)
 const reacted=hasReacted(emoji)
-const isLoading=reactingEmoji===emoji
+const isInFlight=reactingEmoji===emoji
 return(
-<button key={emoji} onClick={()=>toggleReaction(emoji)} disabled={!!reactingEmoji} style={{display:'flex',alignItems:'center',gap:'5px',padding:'6px 12px',borderRadius:'999px',border:'1px solid',borderColor:reacted?'#FF6B00':'#E5E7EB',background:reacted?'#FF6B00':'#ffffff',color:reacted?'#ffffff':'#1A1A1A',fontSize:'13px',cursor:reactingEmoji?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',fontWeight:500,opacity:reactingEmoji&&!isLoading?.6:1,transition:'opacity .15s'}}>
-{isLoading?<span style={{width:'14px',height:'14px',border:'1.5px solid currentColor',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite'}}/>:<span style={{fontSize:'16px'}}>{emoji}</span>}
+<button key={emoji} onClick={()=>toggleReaction(emoji)} disabled={!!reactingEmoji} style={{display:'flex',alignItems:'center',gap:'5px',padding:'6px 12px',borderRadius:'999px',border:'1px solid',borderColor:reacted?'#FF6B00':'#E5E7EB',background:reacted?'#FF6B00':'#ffffff',color:reacted?'#ffffff':'#1A1A1A',fontSize:'13px',cursor:reactingEmoji?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',fontWeight:500,opacity:reactingEmoji&&!isInFlight?.6:1,transition:'all .12s'}}>
+{isInFlight
+?<span style={{width:'14px',height:'14px',border:'1.5px solid currentColor',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite'}}/>
+:<span style={{fontSize:'16px'}}>{emoji}</span>
+}
 <span>{count}</span>
 </button>
 )
@@ -122,8 +135,7 @@ return(
 
 <div style={{position:'relative' as const}} ref={pickerRef}>
 <button onClick={()=>setShowPicker(!showPicker)} style={{display:'flex',alignItems:'center',gap:'5px',padding:'6px 12px',borderRadius:'999px',border:'1px dashed #E5E7EB',background:'#F9FAFB',color:'#6B7280',fontSize:'13px',cursor:'pointer',fontFamily:'Noto Sans,sans-serif'}}>
-<span style={{fontSize:'16px'}}>+</span>
-<span>React</span>
+<span style={{fontSize:'16px'}}>+</span><span>React</span>
 </button>
 
 {showPicker&&(
@@ -139,15 +151,8 @@ return(
 <div style={{borderTop:'1px solid #F3F4F6',paddingTop:'10px'}}>
 <div style={{fontSize:'11px',fontWeight:600,color:'#6B7280',marginBottom:'6px',textTransform:'uppercase' as const,letterSpacing:'.05em'}}>Custom emoji</div>
 <div style={{display:'flex',gap:'6px'}}>
-<input
-value={customEmoji}
-onChange={(e)=>setCustomEmoji(e.target.value)}
-placeholder='Paste any emoji...'
-style={{flex:1,height:'32px',border:'1px solid #E5E7EB',borderRadius:'6px',padding:'0 10px',fontSize:'16px',outline:'none',fontFamily:'Noto Sans,sans-serif'}}
-/>
-<button onClick={()=>{if(customEmoji.trim())toggleReaction(customEmoji.trim())}} disabled={!customEmoji.trim()} style={{height:'32px',padding:'0 12px',background:customEmoji.trim()?'#FF6B00':'#d1d5db',color:'#fff',border:'none',borderRadius:'6px',fontSize:'12px',fontWeight:500,cursor:customEmoji.trim()?'pointer':'not-allowed',fontFamily:'Noto Sans,sans-serif'}}>
-Add
-</button>
+<input value={customEmoji} onChange={(e)=>setCustomEmoji(e.target.value)} placeholder='Paste any emoji...' style={{flex:1,height:'32px',border:'1px solid #E5E7EB',borderRadius:'6px',padding:'0 10px',fontSize:'16px',outline:'none',fontFamily:'Noto Sans,sans-serif'}}/>
+<button onClick={()=>{if(customEmoji.trim())toggleReaction(customEmoji.trim())}} disabled={!customEmoji.trim()} style={{height:'32px',padding:'0 12px',background:customEmoji.trim()?'#FF6B00':'#d1d5db',color:'#fff',border:'none',borderRadius:'6px',fontSize:'12px',fontWeight:500,cursor:customEmoji.trim()?'pointer':'not-allowed',fontFamily:'Noto Sans,sans-serif'}}>Add</button>
 </div>
 </div>
 </div>
@@ -157,20 +162,26 @@ Add
 </div>
 
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px'}}>
-<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'14px'}}>Comments ({comments.length})</div>
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'14px'}}>Comments ({comments.filter(c=>!c.sending).length+(comments.some(c=>c.sending)?1:0)})</div>
 
 {comments.length>0&&(
 <div style={{display:'flex',flexDirection:'column' as const,gap:'14px',marginBottom:'16px'}}>
 {comments.map(comment=>(
-<div key={comment.id} style={{display:'flex',gap:'10px'}}>
+<div key={comment.id} style={{display:'flex',gap:'10px',opacity:comment.sending?.65:1,transition:'opacity .2s'}}>
 <div style={{width:'32px',height:'32px',borderRadius:'50%',background:'#FFE4D1',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#E65C00',flexShrink:0}}>
 {getInitials(comment.user_name)}
 </div>
 <div style={{flex:1}}>
 <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'3px',flexWrap:'wrap' as const}}>
 <span style={{fontSize:'13px',fontWeight:500,color:'#1A1A1A'}}>{comment.user_name}</span>
-<span style={{fontSize:'11px',color:'#9CA3AF'}}>{timeAgo(comment.created_at)}</span>
-{comment.user_email===userEmail&&(
+{comment.sending
+?<span style={{fontSize:'11px',color:'#9CA3AF',display:'flex',alignItems:'center',gap:'4px'}}>
+<span style={{width:'9px',height:'9px',border:'1.5px solid #9CA3AF',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite'}}/>
+Sending…
+</span>
+:<span style={{fontSize:'11px',color:'#9CA3AF'}}>{timeAgo(comment.created_at)}</span>
+}
+{!comment.sending&&comment.user_email===userEmail&&(
 <button onClick={()=>deleteComment(comment.id,comment.user_email)} style={{fontSize:'11px',color:'#9CA3AF',background:'none',border:'none',cursor:'pointer',marginLeft:'auto',fontFamily:'Noto Sans,sans-serif'}}>Delete</button>
 )}
 </div>
@@ -193,13 +204,16 @@ Add
 value={newComment}
 onChange={(e)=>setNewComment(e.target.value)}
 onKeyDown={(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();postComment()}}}
-placeholder='Write a comment... (Enter to post)'
+placeholder='Write a comment… (Enter to post)'
 rows={2}
-disabled={posting}
-style={{flex:1,border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',resize:'none' as const,color:'#1A1A1A',opacity:posting?.6:1,transition:'opacity .15s'}}
+style={{flex:1,border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',resize:'none' as const,color:'#1A1A1A',transition:'opacity .15s'}}
 />
-<button onClick={postComment} disabled={posting||!newComment.trim()} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'5px',background:posting||!newComment.trim()?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:posting||!newComment.trim()?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',flexShrink:0,minWidth:'52px'}}>
-{posting?<span style={{width:'12px',height:'12px',border:'1.5px solid #fff',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite'}}/>:'Post'}
+<button
+onClick={postComment}
+disabled={!newComment.trim()||!userEmail}
+style={{display:'flex',alignItems:'center',justifyContent:'center',background:!newComment.trim()||!userEmail?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:!newComment.trim()||!userEmail?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',flexShrink:0,minWidth:'52px'}}
+>
+Post
 </button>
 </div>
 </div>

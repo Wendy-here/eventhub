@@ -2,6 +2,7 @@
 import{useState,useRef,useCallback,useEffect}from'react'
 import{createPortal}from'react-dom'
 import Image from'next/image'
+import Link from'next/link'
 
 const TOOLTIP_W=248
 const TOOLTIP_MAX_H=320
@@ -128,14 +129,14 @@ maxHeight:'36px',
 
 return(
 <div ref={pillRef} style={{position:'relative'}} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-<a
+<Link
 href={'/events/'+ev.id}
 onTouchEnd={onTouchEnd}
 className='event-pill-link'
 style={{display:'block',padding:'2px 6px',borderRadius:'4px',fontSize:'10.5px',fontWeight:500,marginBottom:'2px',textDecoration:'none',background:color,color:'#ffffff',whiteSpace:'nowrap' as const,overflow:'hidden',textOverflow:'ellipsis'}}
 >
 {ev.title}
-</a>
+</Link>
 {mounted&&show&&createPortal(tooltip,document.body)}
 </div>
 )
