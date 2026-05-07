@@ -1,4 +1,4 @@
-import{supabase}from'@/app/lib/supabase'
+import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{notFound}from'next/navigation'
 import{updateEvent,deleteEvent,deleteImage}from'./actions'
 import DeleteButton from'./DeleteButton'
@@ -14,6 +14,7 @@ Germany:['Berlin'],
 }
 
 export default async function EditEventPage(props:any){
+const supabase=await getServerSupabase()
 const{id}=await props.params
 const{data:event}=await supabase.from('events').select('*').eq('id',id).single()
 if(!event)return notFound()

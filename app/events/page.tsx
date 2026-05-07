@@ -1,4 +1,4 @@
-import{supabase}from'@/app/lib/supabase'
+import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{isAdmin}from'@/app/lib/roles'
 import{Suspense}from'react'
 import EventsFilterBar from'@/app/components/EventsFilterBar'
@@ -8,6 +8,7 @@ const PAGE_SIZE=10
 const LIST_FIELDS='id,title,date,location,category,entity,office,tags,description,drive_link'
 
 export default async function EventsPage({searchParams}:any){
+const supabase=await getServerSupabase()
 const sp=await searchParams
 const page=Math.max(1,parseInt(sp?.page||'1'))
 const search=sp?.search||''

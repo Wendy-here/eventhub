@@ -1,7 +1,8 @@
-import{supabase}from'@/app/lib/supabase'
+import{getServerSupabase}from'@/app/lib/supabaseServer'
 import Image from'next/image'
 
 export default async function ImagesPage(){
+const supabase=await getServerSupabase()
 const{data:images}=await supabase
 .from('event_images')
 .select('*,events(title,date)')

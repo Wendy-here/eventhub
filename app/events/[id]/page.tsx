@@ -1,4 +1,4 @@
-import{supabase}from'@/app/lib/supabase'
+import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{notFound}from'next/navigation'
 import{isAdmin,getCurrentUser}from'@/app/lib/roles'
 import ReactionsComments from'@/app/components/ReactionsComments'
@@ -7,6 +7,7 @@ import Image from'next/image'
 import{allZoneTimes}from'@/app/lib/timezones'
 
 export default async function EventPage(props:any){
+const supabase=await getServerSupabase()
 const{id}=await props.params
 const[{data:event},{data:images},{data:initialReactions},{data:initialComments},{data:initialAttendances},admin,currentUser]=await Promise.all([
 supabase.from('events').select('*').eq('id',id).single(),

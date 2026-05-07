@@ -1,9 +1,10 @@
-import{supabase}from'@/app/lib/supabase'
+import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{Suspense}from'react'
 import FilterBar from'@/app/components/FilterBar'
 import EventPill from'@/app/components/EventPill'
 
 export default async function CalendarPage({searchParams}:any){
+const supabase=await getServerSupabase()
 const sp=await searchParams
 const today=new Date()
 const year=sp?.year?parseInt(sp.year):today.getFullYear()
@@ -13,17 +14,21 @@ const category=sp?.category||''
 const entity=sp?.entity||''
 const office=sp?.office||''
 
-const firstDay=new Date(year,month-1,1)
-const lastDay=new Date(year,month,0)
-const monthName=firstDay.toLocaleString('default',{month:'long'})
+const pad=(n:number)=>String(n).padStart(2,'0')
+const lastDayNum=new Date(year,month,0).getDate()
+const firstDateStr=`${year}-${pad(month)}-01`
+const lastDateStr=`${year}-${pad(month)}-${pad(lastDayNum)}`
+const monthName=new Date(year,month-1,1).toLocaleString('default',{month:'long'})
 
 // Only fetch fields needed by the calendar pill and mobile list
 const CALENDAR_FIELDS='id,title,date,location,category,entity,office,event_time,timezone,description'
 const RECENT_FIELDS='id,title,date,description,category,entity,office'
 
+const nextMonthFirstStr=month===12?`${year+1}-01-01`:`${year}-${pad(month+1)}-01`
+
 let calQuery=supabase.from('events').select(CALENDAR_FIELDS)
-.gte('date',firstDay.toISOString().split('T')[0])
-.lte('date',lastDay.toISOString().split('T')[0])
+.gte('date',firstDateStr)
+.lt('date',nextMonthFirstStr)
 if(search)calQuery=calQuery.ilike('title','%'+search+'%')
 if(category)calQuery=calQuery.eq('category',category)
 if(entity)calQuery=calQuery.eq('entity',entity)
@@ -45,14 +50,15 @@ previewImages?.forEach((img:any)=>{if(!firstImageByEvent[img.event_id])firstImag
 
 const eventsByDate:Record<string,any[]>={}
 events?.forEach((e:any)=>{
-if(!eventsByDate[e.date])eventsByDate[e.date]=[]
-eventsByDate[e.date].push(e)
+const dateKey=(e.date||'').slice(0,10)
+if(!eventsByDate[dateKey])eventsByDate[dateKey]=[]
+eventsByDate[dateKey].push(e)
 })
 
-const startWday=firstDay.getDay()
+const startWday=new Date(year,month-1,1).getDay()
 const adjustedStart=startWday===0?6:startWday-1
-const totalDays=lastDay.getDate()
-const todayStr=today.toISOString().split('T')[0]
+const totalDays=lastDayNum
+const todayStr=`${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`
 
 const days:any[]=[]
 for(let i=0;i<adjustedStart;i++)days.push({day:null,date:null})
@@ -169,7 +175,7 @@ Events this month ({events?.length||0})
 {sortedEvents.length>0?(
 <div style={{display:'flex',flexDirection:'column' as const,gap:'8px'}}>
 {sortedEvents.map((ev:any)=>{
-const d=new Date(ev.date+'T00:00:00')
+const d=new Date(ev.date.slice(0,10)+'T00:00:00')
 const dateLabel=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})
 return(
 <a key={ev.id} href={'/events/'+ev.id} style={{textDecoration:'none',display:'block',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'12px 14px'}}>

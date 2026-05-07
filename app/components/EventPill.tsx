@@ -74,7 +74,7 @@ setTimeout(()=>{tappedRef.current=false;setShow(false)},4000)
 }
 }
 
-const date=new Date(ev.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})
+const date=new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})
 
 const tooltip=(
 <div
@@ -131,6 +131,7 @@ return(
 <a
 href={'/events/'+ev.id}
 onTouchEnd={onTouchEnd}
+className='event-pill-link'
 style={{display:'block',padding:'2px 6px',borderRadius:'4px',fontSize:'10.5px',fontWeight:500,marginBottom:'2px',textDecoration:'none',background:color,color:'#ffffff',whiteSpace:'nowrap' as const,overflow:'hidden',textOverflow:'ellipsis'}}
 >
 {ev.title}

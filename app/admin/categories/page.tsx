@@ -1,10 +1,11 @@
-import{supabase}from'@/app/lib/supabase'
+import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{isAdmin}from'@/app/lib/roles'
 import{redirect}from'next/navigation'
 import{revalidatePath}from'next/cache'
 
 async function addCategory(formData:FormData){
 'use server'
+const supabase=await getServerSupabase()
 const name=formData.get('name') as string
 const color=formData.get('color') as string
 if(!name.trim())return
@@ -14,12 +15,14 @@ revalidatePath('/admin/categories')
 
 async function deleteCategory(formData:FormData){
 'use server'
+const supabase=await getServerSupabase()
 const id=formData.get('id') as string
 await supabase.from('categories').delete().eq('id',id)
 revalidatePath('/admin/categories')
 }
 
 export default async function CategoriesPage(){
+const supabase=await getServerSupabase()
 const admin=await isAdmin()
 if(!admin)redirect('/')
 

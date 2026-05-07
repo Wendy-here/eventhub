@@ -1,5 +1,5 @@
 'use client'
-import{useState,useMemo}from'react'
+import{useState,useMemo,useRef}from'react'
 
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December']
 const YEARS=Array.from({length:21},(_,i)=>2015+i) // 2015-2035
@@ -46,9 +46,10 @@ if(defaultTime){const[h]=defaultTime.split(':');return h||''}
 return ''
 })
 const[minute,setMinute]=useState(()=>{
-if(defaultTime){const[,m]=defaultTime.split(':');if(m){const n=Number(m);const snapped=Math.round(n/15)*15%60;return String(snapped).padStart(2,'0')}}
-return '00'
+if(defaultTime){const[,m]=defaultTime.split(':');return m||''}
+return ''
 })
+const minuteRef=useRef<HTMLInputElement>(null)
 const[internalTz,setInternalTz]=useState(defaultTimezone)
 const timezone=controlledTz!==undefined?controlledTz:internalTz
 const setTimezone=(v:string)=>{if(onTimezoneChange)onTimezoneChange(v);else setInternalTz(v)}
@@ -59,9 +60,33 @@ const safeDay=day>maxDay?maxDay:day
 const dateValue=year&&month&&safeDay
 ?`${year}-${String(month).padStart(2,'0')}-${String(safeDay).padStart(2,'0')}`
 :''
-const timeValue=hour?`${hour}:${minute}`:''
+const timeValue=hour?`${hour.padStart(2,'0')}:${(minute||'00').padStart(2,'0')}`:''
 
-const hours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0'))
+const INP:React.CSSProperties={
+width:'100%',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'7px 10px',
+fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',
+color:'#1A1A1A',background:'#ffffff',textAlign:'center' as const,
+}
+
+const handleHourChange=(v:string)=>{
+const stripped=v.replace(/\D/g,'').slice(0,2)
+setHour(stripped)
+if(stripped.length===2){const n=Number(stripped);if(n>=0&&n<=23)minuteRef.current?.focus()}
+}
+const handleHourBlur=(v:string)=>{
+const n=Number(v)
+if(v===''||isNaN(n)||n<0||n>23){setHour('');setMinute('')}
+else setHour(String(n).padStart(2,'0'))
+}
+const handleMinuteChange=(v:string)=>{
+const stripped=v.replace(/\D/g,'').slice(0,2)
+setMinute(stripped)
+}
+const handleMinuteBlur=(v:string)=>{
+const n=Number(v)
+if(v===''||isNaN(n)||n<0||n>59)setMinute(hour?'00':'')
+else setMinute(String(n).padStart(2,'0'))
+}
 
 return(
 <>
@@ -99,14 +124,30 @@ Date <span style={{color:'#DC2626'}}>*</span>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>
 Time <span style={{fontWeight:400,color:'#9CA3AF'}}>(optional)</span>
 </label>
-<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px'}}>
-<select value={hour} onChange={e=>setHour(e.target.value)} style={SEL} aria-label='Hour'>
-<option value=''>Hour</option>
-{hours.map(h=><option key={h} value={h}>{h}</option>)}
-</select>
-<select value={minute} onChange={e=>setMinute(e.target.value)} disabled={!hour} style={{...SEL,opacity:hour?1:.45}} aria-label='Minute'>
-{['00','15','30','45'].map(m=><option key={m} value={m}>{m}</option>)}
-</select>
+<div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:'4px',alignItems:'center'}}>
+<input
+value={hour}
+onChange={e=>handleHourChange(e.target.value)}
+onBlur={e=>handleHourBlur(e.target.value)}
+placeholder='HH'
+inputMode='numeric'
+maxLength={2}
+style={INP}
+aria-label='Hour'
+/>
+<span style={{fontSize:'13px',color:'#6B7280',fontWeight:500,textAlign:'center' as const}}>:</span>
+<input
+ref={minuteRef}
+value={minute}
+onChange={e=>handleMinuteChange(e.target.value)}
+onBlur={e=>handleMinuteBlur(e.target.value)}
+placeholder='MM'
+inputMode='numeric'
+maxLength={2}
+disabled={!hour}
+style={{...INP,opacity:hour?1:.4}}
+aria-label='Minute'
+/>
 </div>
 </div>
 <div>
