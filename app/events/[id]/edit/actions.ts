@@ -1,14 +1,10 @@
 'use server'
-import{createClient}from'@supabase/supabase-js'
+import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{redirect}from'next/navigation'
 import{revalidatePath}from'next/cache'
 
-const supabase=createClient(
-process.env.NEXT_PUBLIC_SUPABASE_URL!,
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export async function updateEvent(formData:FormData){
+const supabase=await getServerSupabase()
 const id=formData.get('id') as string
 const title=formData.get('title') as string
 const date=formData.get('date') as string
@@ -39,6 +35,7 @@ redirect('/events/'+id)
 }
 
 export async function deleteEvent(formData:FormData){
+const supabase=await getServerSupabase()
 const id=formData.get('id') as string
 const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id)
 if(images&&images.length>0){
@@ -53,6 +50,7 @@ redirect('/')
 }
 
 export async function deleteImage(formData:FormData){
+const supabase=await getServerSupabase()
 const imageId=formData.get('image_id') as string
 const eventId=formData.get('event_id') as string
 const imageUrl=formData.get('image_url') as string

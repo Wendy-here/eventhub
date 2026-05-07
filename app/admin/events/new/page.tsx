@@ -62,6 +62,7 @@ handleFiles(e.dataTransfer.files)
 const removeFile=(i:number)=>setFiles((prev:FileItem[])=>prev.filter((_,idx)=>idx!==i))
 
 const[dateError,setDateError]=useState('')
+const[formError,setFormError]=useState('')
 
 const handleSubmit=async(e:React.FormEvent<HTMLFormElement>)=>{
 e.preventDefault()
@@ -70,6 +71,7 @@ const title=form.get('title') as string
 const date=form.get('date') as string
 if(!date){setDateError('Please select a day, month, and year.');return}
 setDateError('')
+setFormError('')
 setSaving(true)
 const description=form.get('description') as string
 const location=form.get('location') as string
@@ -90,7 +92,13 @@ office:office||null,
 event_time:event_time||null,
 timezone:timezone||null,
 }).select().single()
-if(error){console.error(error);setSaving(false);return}
+if(error){
+const msg=error.message||error.code||'Unknown error'
+console.error('[createEvent]',error)
+setFormError(msg)
+setSaving(false)
+return
+}
 
 const rows:any[]=[]
 for(let i=0;i<files.length;i++){
@@ -208,6 +216,7 @@ style={{border:'2px dashed '+(dragOver?'#FF6B00':'#E5E7EB'),borderRadius:'8px',p
 </div>
 </div>
 
+{formError&&<div style={{fontSize:'12px',color:'#dc2626',padding:'8px 12px',background:'#fef2f2',borderRadius:'8px',border:'1px solid #fecaca',marginBottom:'4px'}}><strong>Save failed:</strong> {formError}</div>}
 <div style={{display:'flex',justifyContent:'flex-end',gap:'8px'}}>
 <a href='/' style={{background:'#ffffff',color:'#374151',border:'1px solid #E5E7EB',padding:'9px 18px',borderRadius:'8px',fontSize:'13px',textDecoration:'none',fontWeight:500}}>Cancel</a>
 <button type='submit' disabled={saving} style={{background:saving?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'9px 18px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:saving?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif'}}>

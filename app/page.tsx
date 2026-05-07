@@ -17,7 +17,6 @@ const office=sp?.office||''
 const pad=(n:number)=>String(n).padStart(2,'0')
 const lastDayNum=new Date(year,month,0).getDate()
 const firstDateStr=`${year}-${pad(month)}-01`
-const lastDateStr=`${year}-${pad(month)}-${pad(lastDayNum)}`
 const monthName=new Date(year,month-1,1).toLocaleString('default',{month:'long'})
 
 // Only fetch fields needed by the calendar pill and mobile list
