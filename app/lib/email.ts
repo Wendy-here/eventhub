@@ -1,2 +1,2 @@
-export async function sendNewEventEmail(){}
-export async function sendReminderEmail(){}
+export async function sendNewEventEmail(title:string,date:string,eventId:string){}
+export async function sendReminderEmail(to:string[],title:string,eventTime:string,timezone:string,eventId:string){}
