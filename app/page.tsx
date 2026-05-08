@@ -37,7 +37,7 @@ if(entity)calQuery=calQuery.eq('entity',entity)
 if(office)calQuery=calQuery.eq('office',office)
 
 // Run calendar events + recent events + admin check in parallel
-const[{data:events},{data:recentEvents},admin]=await Promise.all([
+const[{data:events,error:calErr},{data:recentEvents,error:recentErr},admin]=await Promise.all([
 calQuery,
 supabase.from('events').select(RECENT_FIELDS).order('date',{ascending:false}).limit(6),
 isAdmin(),
