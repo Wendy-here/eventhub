@@ -2,11 +2,10 @@ import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{isAdmin}from'@/app/lib/roles'
 import{Suspense}from'react'
 import EventsFilterBar from'@/app/components/EventsFilterBar'
-import Image from'next/image'
 import{getCoverGradient}from'@/app/lib/coverImage'
 
 const PAGE_SIZE=10
-const LIST_FIELDS='id,title,date,location,category,entity,office,tags,description,cover_image_url'
+const LIST_FIELDS='id,title,date,location,category,entity,office,tags,description'
 
 export default async function EventsPage({searchParams}:any){
 const supabase=await getServerSupabase()
@@ -35,22 +34,25 @@ else if(sort==='az')dataQuery=dataQuery.order('title',{ascending:true})
 else if(sort==='za')dataQuery=dataQuery.order('title',{ascending:false})
 else dataQuery=dataQuery.order('date',{ascending:false})
 
-const[{count},{data:allEvents}]=await Promise.all([
+const[countResult,dataResult]=await Promise.all([
 countQuery,
 dataQuery.range((Math.max(1,page)-1)*PAGE_SIZE,Math.max(1,page)*PAGE_SIZE-1)
 ])
-const total=count||0
+if(countResult.error)console.error('[EventsPage] count query error:',countResult.error)
+if(dataResult.error)console.error('[EventsPage] data query error:',dataResult.error)
+const total=countResult.count||0
 const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE))
 const safePage=Math.min(Math.max(1,page),totalPages)
-const events=allEvents
+const events=dataResult.data||[]
 
-// Fetch going counts for this page of events
-const eventIds=events?.map((e:any)=>e.id)||[]
-const{data:goings}=eventIds.length>0
-?await supabase.from('attendances').select('event_id').eq('status','yes').in('event_id',eventIds)
-:{data:[]}
+// Fetch going counts — skip gracefully if attendances table doesn't exist
+const eventIds=events.map((e:any)=>e.id)
 const goingByEvent:Record<string,number>={}
+if(eventIds.length>0){
+const{data:goings,error:goingsError}=await supabase.from('attendances').select('event_id').eq('status','yes').in('event_id',eventIds)
+if(goingsError)console.error('[EventsPage] goings query error:',goingsError)
 goings?.forEach((a:any)=>{goingByEvent[a.event_id]=(goingByEvent[a.event_id]||0)+1})
+}
 
 const buildUrl=(params:Record<string,string>)=>{
 const base:Record<string,string>={}
@@ -96,7 +98,6 @@ return(
 
 {/* Cover area */}
 <div style={{height:'120px',position:'relative',overflow:'hidden',background:getCoverGradient(ev.category,ev.id)}}>
-{ev.cover_image_url&&<Image src={ev.cover_image_url} alt={ev.title} fill sizes='(max-width:640px) 100vw,(max-width:1024px) 50vw,500px' style={{objectFit:'cover'}}/>}
 {ev.category&&(
 <div style={{position:'absolute',top:'10px',left:'10px',zIndex:1}}>
 <span style={{fontSize:'10px',background:'rgba(0,0,0,.35)',color:'#ffffff',padding:'2px 8px',borderRadius:'999px',fontWeight:600}}>{ev.category}</span>
