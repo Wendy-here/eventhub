@@ -207,6 +207,7 @@ return(
 </div>
 
 {/* RECENT EVENTS SECTION */}
+<div style={{color:"red",fontSize:"12px"}}>DEBUG: {recentEvents?.length ?? "null"} events</div>
 <div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Recent events</div>
 <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
 {recentEvents?.map((ev:any)=>(
