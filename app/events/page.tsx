@@ -2,10 +2,9 @@ import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{isAdmin}from'@/app/lib/roles'
 import{Suspense}from'react'
 import EventsFilterBar from'@/app/components/EventsFilterBar'
-import{getCoverGradient}from'@/app/lib/coverImage'
 
 const PAGE_SIZE=10
-const LIST_FIELDS='id,title,date,location,category,entity,office,tags,description'
+const LIST_FIELDS='id,title,date,location,category,entity,office,tags,description,drive_link'
 
 export default async function EventsPage({searchParams}:any){
 const supabase=await getServerSupabase()
@@ -90,54 +89,26 @@ return(
 
 <div className='page-padding' style={{padding:'0 24px 32px'}}>
 
-{/* 2-column card grid */}
-<div className='events-grid' style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'14px',marginBottom:'28px'}}>
+<div style={{display:'flex',flexDirection:'column',gap:'10px',maxWidth:'800px'}}>
 {events&&events.length>0?events.map((ev:any)=>(
-<a key={ev.id} href={'/events/'+ev.id} className='event-card'>
-<div className='event-card-inner' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'16px',overflow:'hidden'}}>
-
-{/* Cover area */}
-<div style={{height:'120px',position:'relative',overflow:'hidden',background:getCoverGradient(ev.category,ev.id)}}>
-{ev.category&&(
-<div style={{position:'absolute',top:'10px',left:'10px',zIndex:1}}>
-<span style={{fontSize:'10px',background:'rgba(0,0,0,.35)',color:'#ffffff',padding:'2px 8px',borderRadius:'999px',fontWeight:600}}>{ev.category}</span>
+<a key={ev.id} href={'/events/'+ev.id} style={{display:'block',textDecoration:'none'}}>
+<div style={{background:'#fff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',transition:'border-color 0.15s'}}>
+<div style={{flex:1}}>
+<div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'6px'}}>
+<div style={{fontSize:'15px',fontWeight:600,color:'#111827'}}>{ev.title}</div>
+{ev.drive_link&&<span style={{fontSize:'10px',background:'#F0FDF4',color:'#15803D',border:'1px solid #BBF7D0',padding:'1px 7px',borderRadius:'10px'}}>Drive</span>}
 </div>
-)}
-{goingByEvent[ev.id]>0&&(
-<div style={{position:'absolute',top:'10px',right:'10px',zIndex:1}}>
-<span style={{fontSize:'10px',background:'rgba(0,0,0,.35)',color:'#ffffff',padding:'2px 8px',borderRadius:'999px',fontWeight:600}}>{goingByEvent[ev.id]} going</span>
-</div>
-)}
-</div>
-
-{/* Card body */}
-<div style={{padding:'14px'}}>
-<div style={{fontSize:'11px',color:'#FF6B00',fontWeight:600,marginBottom:'4px'}}>{new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
-<div style={{fontSize:'14px',fontWeight:700,color:'#1A1A1A',marginBottom:'6px',lineHeight:1.3}}>{ev.title}</div>
-{ev.location&&(
-<div style={{display:'flex',alignItems:'center',gap:'4px',fontSize:'12px',color:'#6B7280',marginBottom:'6px'}}>
-<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z'/><circle cx='12' cy='10' r='3'/></svg>
-{ev.location}
-</div>
-)}
-{ev.description&&<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>{ev.description}</div>}
-<div style={{display:'flex',gap:'5px',marginTop:'10px',flexWrap:'wrap' as const}}>
-{ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'2px 9px',borderRadius:'999px'}}>{ev.entity}</span>}
-{ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'2px 9px',borderRadius:'999px'}}>{ev.office}</span>}
-{ev.tags&&ev.tags.slice(0,2).map((tag:string)=>(
-<span key={tag} style={{fontSize:'10px',background:'#F9FAFB',color:'#9CA3AF',padding:'2px 9px',borderRadius:'999px'}}>#{tag}</span>
-))}
+<div style={{display:'flex',gap:'12px',fontSize:'12px',color:'#6B7280'}}>
+<span>📅 {new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span>
+{ev.location&&<span>📍 {ev.location}</span>}
 </div>
 </div>
+<div style={{color:'#9CA3AF',fontSize:'18px',marginLeft:'12px'}}>›</div>
 </div>
 </a>
 )):(
-<div className='empty-state' style={{gridColumn:'1/-1',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'16px'}}>
-<svg width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>
-<span>No events found</span>
-{admin&&!search&&!category&&!entity&&(
-<a href='/admin/events/new' style={{color:'#FF6B00',textDecoration:'none',fontWeight:500,fontSize:'12px'}}>+ Create the first event</a>
-)}
+<div style={{padding:'60px',textAlign:'center' as const,color:'#9CA3AF',fontSize:'14px'}}>
+No events found.
 </div>
 )}
 </div>
