@@ -3,8 +3,6 @@ import{isAdmin}from'@/app/lib/roles'
 import{Suspense}from'react'
 import FilterBar from'@/app/components/FilterBar'
 import EventPill from'@/app/components/EventPill'
-import Image from'next/image'
-import{getCoverGradient}from'@/app/lib/coverImage'
 
 export default async function CalendarPage({searchParams}:any){
 const supabase=await getServerSupabase()
@@ -25,7 +23,7 @@ const monthName=new Date(year,month-1,1).toLocaleString('default',{month:'long'}
 // Only fetch fields needed by the calendar pill and mobile list
 // event_time + timezone omitted until ALTER TABLE migration has been run
 const CALENDAR_FIELDS='id,title,date,location,category,entity,office,description'
-const RECENT_FIELDS='id,title,date,description,category,entity,office,cover_image_url'
+const RECENT_FIELDS='id,title,date,description,category,entity,office'
 
 const nextMonthFirstStr=month===12?`${year+1}-01-01`:`${year}-${pad(month+1)}-01`
 
@@ -44,21 +42,13 @@ supabase.from('events').select(RECENT_FIELDS).order('date',{ascending:false}).li
 isAdmin(),
 ])
 
-// Preview images + going counts for recent events — run in parallel
+// Fetch preview images for calendar EventPill thumbnails
 const eventIds=events?.map((e:any)=>e.id)||[]
-const recentIds=recentEvents?.map((e:any)=>e.id)||[]
-const[{data:previewImages},{data:recentGoings}]=await Promise.all([
-eventIds.length>0
-?supabase.from('event_images').select('event_id,image_url').in('event_id',eventIds).order('sort_order').limit(eventIds.length)
-:Promise.resolve({data:[],error:null}),
-recentIds.length>0
-?supabase.from('attendances').select('event_id').eq('status','yes').in('event_id',recentIds)
-:Promise.resolve({data:[],error:null}),
-])
+const{data:previewImages}=eventIds.length>0
+?await supabase.from('event_images').select('event_id,image_url').in('event_id',eventIds).order('sort_order').limit(eventIds.length)
+:{data:[]}
 const firstImageByEvent:Record<string,string>={}
 previewImages?.forEach((img:any)=>{if(!firstImageByEvent[img.event_id])firstImageByEvent[img.event_id]=img.image_url})
-const goingByEvent:Record<string,number>={}
-recentGoings?.forEach((a:any)=>{goingByEvent[a.event_id]=(goingByEvent[a.event_id]||0)+1})
 
 const eventsByDate:Record<string,any[]>={}
 events?.forEach((e:any)=>{
@@ -215,34 +205,25 @@ return(
 
 </div>
 
+{/* RECENT EVENTS SECTION */}
 <div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Recent events</div>
-<div className='events-grid' style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'14px'}}>
+<div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
 {recentEvents?.map((ev:any)=>(
-<a key={ev.id} href={'/events/'+ev.id} className='event-card'>
-<div className='event-card-inner' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'16px',overflow:'hidden'}}>
-{/* Cover area */}
-<div style={{height:'120px',position:'relative',overflow:'hidden',background:getCoverGradient(ev.category,ev.id)}}>
-{ev.cover_image_url&&<Image src={ev.cover_image_url} alt={ev.title} fill sizes='(max-width:640px) 100vw,(max-width:1024px) 50vw,33vw' style={{objectFit:'cover'}}/>}
-{ev.category&&(
-<div style={{position:'absolute',top:'10px',left:'10px',zIndex:1}}>
-<span style={{fontSize:'10px',background:'rgba(0,0,0,.35)',color:'#ffffff',padding:'2px 8px',borderRadius:'999px',fontWeight:600}}>{ev.category}</span>
+<a key={ev.id} href={'/events/'+ev.id} style={{textDecoration:'none'}}>
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'14px'}}>
+<div style={{fontSize:'11px',color:'#E65C00',fontWeight:500,marginBottom:'4px'}}>
+{new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
 </div>
-)}
-{goingByEvent[ev.id]>0&&(
-<div style={{position:'absolute',top:'10px',right:'10px',zIndex:1}}>
-<span style={{fontSize:'10px',background:'rgba(0,0,0,.35)',color:'#ffffff',padding:'2px 8px',borderRadius:'999px',fontWeight:600}}>{goingByEvent[ev.id]} going</span>
-</div>
-)}
-</div>
-{/* Card content */}
-<div style={{padding:'14px'}}>
-<div style={{fontSize:'11px',color:'#E65C00',fontWeight:500,marginBottom:'4px'}}>{new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
 <div style={{fontSize:'13.5px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
-{ev.description&&<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>{ev.description}</div>}
+{ev.description&&(
+<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>
+{ev.description}
+</div>
+)}
 <div style={{display:'flex',gap:'5px',marginTop:'8px',flexWrap:'wrap' as const}}>
+{ev.category&&<span style={{fontSize:'10px',background:'#FFE4D1',color:'#E65C00',padding:'1px 8px',borderRadius:'999px',fontWeight:500}}>{ev.category}</span>}
 {ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.entity}</span>}
 {ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.office}</span>}
-</div>
 </div>
 </div>
 </a>
