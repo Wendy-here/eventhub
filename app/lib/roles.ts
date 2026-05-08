@@ -8,7 +8,10 @@ const cookieStore=await cookies()
 const supabase=createServerClient(
 process.env.NEXT_PUBLIC_SUPABASE_URL!,
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-{cookies:{getAll(){return cookieStore.getAll()},setAll(c){try{c.forEach(({name,value,options})=>cookieStore.set(name,value,options))}catch{}}}
+{cookies:{
+getAll(){return cookieStore.getAll()},
+setAll(c:any){try{c.forEach(({name,value,options}:any)=>cookieStore.set(name,value,options))}catch{}}
+}}
 )
 const{data:{user}}=await supabase.auth.getUser()
 return user
@@ -18,7 +21,6 @@ export async function isAdmin(){
 const user=await getCurrentUser()
 if(!user?.email)return false
 if(!ADMIN_EMAILS.includes(user.email))return false
-// Allow admins to preview the app as a regular member
 const cookieStore=await cookies()
 if(cookieStore.get('previewRole')?.value==='member')return false
 return true
