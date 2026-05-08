@@ -1,0 +1,3257 @@
+# EventHub (Gradion Wall) — Full Source Code
+# Generated: 2026-05-07 08:05
+# Stack: Next.js App Router · Supabase · TypeScript · Tailwind v4
+
+
+================================================================
+FILE: app/admin/categories/page.tsx
+================================================================
+
+import{getServerSupabase}from'@/app/lib/supabaseServer'
+import{isAdmin}from'@/app/lib/roles'
+import{redirect}from'next/navigation'
+import{revalidatePath}from'next/cache'
+
+async function addCategory(formData:FormData){
+'use server'
+const supabase=await getServerSupabase()
+const name=formData.get('name') as string
+const color=formData.get('color') as string
+if(!name.trim())return
+await supabase.from('categories').insert({name:name.trim(),color:color||'#FF6B00'})
+revalidatePath('/admin/categories')
+}
+
+async function deleteCategory(formData:FormData){
+'use server'
+const supabase=await getServerSupabase()
+const id=formData.get('id') as string
+await supabase.from('categories').delete().eq('id',id)
+revalidatePath('/admin/categories')
+}
+
+export default async function CategoriesPage(){
+const supabase=await getServerSupabase()
+const admin=await isAdmin()
+if(!admin)redirect('/')
+
+const{data:categories}=await supabase.from('categories').select('*').order('name')
+
+return(
+<div style={{padding:'20px 24px',maxWidth:'600px'}}>
+<div style={{marginBottom:'24px'}}>
+<h1 style={{fontSize:'21px',fontWeight:700,color:'#1A1A1A',margin:0}}>Manage categories</h1>
+<p style={{fontSize:'12.5px',color:'#6B7280',marginTop:'4px',marginBottom:0}}>Add or remove event categories</p>
+</div>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'20px'}}>
+<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
+<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Add new category</div>
+</div>
+<form action={addCategory} style={{padding:'18px',display:'flex',gap:'10px',alignItems:'flex-end',flexWrap:'wrap' as const}}>
+<div style={{flex:1,minWidth:'160px'}}>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Category name *</label>
+<input name='name' required placeholder='e.g. Company Trip' style={{width:'100%',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',color:'#1A1A1A'}}/>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Color</label>
+<input name='color' type='color' defaultValue='#FF6B00' style={{width:'48px',height:'36px',border:'1px solid #E5E7EB',borderRadius:'8px',cursor:'pointer',padding:'2px'}}/>
+</div>
+<button type='submit' style={{background:'#FF6B00',color:'#fff',border:'none',padding:'9px 18px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:'pointer',fontFamily:'Noto Sans,sans-serif',height:'36px'}}>Add</button>
+</form>
+</div>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden'}}>
+<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
+<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Current categories ({categories?.length||0})</div>
+</div>
+<div style={{padding:'8px'}}>
+{categories&&categories.length>0?categories.map((cat:any)=>(
+<div key={cat.id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 12px',borderRadius:'8px',marginBottom:'2px',background:'#FAFAFA'}}>
+<div style={{width:'12px',height:'12px',borderRadius:'50%',background:cat.color,flexShrink:0}}/>
+<div style={{flex:1,fontSize:'13px',fontWeight:500,color:'#1A1A1A'}}>{cat.name}</div>
+<form action={deleteCategory}>
+<input type='hidden' name='id' value={cat.id}/>
+<button type='submit' style={{background:'none',border:'none',color:'#9CA3AF',cursor:'pointer',fontSize:'12px',fontFamily:'Noto Sans,sans-serif',padding:'4px 8px',borderRadius:'6px'}}>Remove</button>
+</form>
+</div>
+)):(
+<div style={{padding:'24px',textAlign:'center' as const,color:'#9CA3AF',fontSize:'13px'}}>No categories yet</div>
+)}
+</div>
+</div>
+</div>
+)
+}
+
+================================================================
+FILE: app/admin/events/new/actions.ts
+================================================================
+
+'use server'
+import{getServerSupabase}from'@/app/lib/supabaseServer'
+
+export async function createEvent(formData:FormData):Promise<{id:string}|{error:string}>{
+const supabase=await getServerSupabase()
+const title=formData.get('title') as string
+const date=formData.get('date') as string
+const description=formData.get('description') as string
+const location=formData.get('location') as string
+const drive_link=formData.get('drive_link') as string
+const category=formData.get('category') as string
+const entity=formData.get('entity') as string
+const office=formData.get('office') as string
+const tagsRaw=formData.get('tags') as string
+const tags=tagsRaw?tagsRaw.split(',').map((t:string)=>t.trim()).filter(Boolean):[]
+const{data,error}=await supabase.from('events').insert({
+title,date,
+description:description||null,
+location:location||null,
+tags,
+drive_link:drive_link||null,
+category:category||null,
+entity:entity||null,
+office:office||null,
+}).select('id').single()
+if(error){
+console.error('[createEvent]',JSON.stringify(error))
+return{error:error.message||error.code||'Insert failed'}
+}
+return{id:data.id}
+}
+
+
+================================================================
+FILE: app/admin/events/new/page.tsx
+================================================================
+
+'use client'
+import{useState,useCallback,useEffect}from'react'
+import{supabase}from'@/app/lib/supabase'
+import{createEvent}from'./actions'
+import{useRouter}from'next/navigation'
+import DateTimePicker from'@/app/components/DateTimePicker'
+import{TIMEZONE_KEYS}from'@/app/lib/timezones'
+
+const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
+const OFFICES:Record<string,string[]>={
+Vietnam:['Saigon','Hanoi','Can Tho'],
+Thailand:['Bangkok'],
+Egypt:['Cairo'],
+Germany:['Berlin'],
+}
+const ENTITY_TIMEZONE:Record<string,string>={
+Vietnam:'Vietnam / Thailand',
+Thailand:'Vietnam / Thailand',
+Egypt:'Egypt',
+Germany:'Germany',
+}
+
+type FileItem={file:File,preview:string,caption:string}
+type Category={id:string,name:string,color:string}
+
+export default function NewEventPage(){
+const router=useRouter()
+const[files,setFiles]=useState<FileItem[]>([])
+const[dragOver,setDragOver]=useState(false)
+const[saving,setSaving]=useState(false)
+const[driveLink,setDriveLink]=useState('')
+const[selectedEntity,setSelectedEntity]=useState('')
+const[selectedTimezone,setSelectedTimezone]=useState('')
+const[tzManuallySet,setTzManuallySet]=useState(false)
+
+const handleEntityChange=(e:string)=>{
+setSelectedEntity(e)
+if(!tzManuallySet&&e&&ENTITY_TIMEZONE[e])setSelectedTimezone(ENTITY_TIMEZONE[e])
+else if(!tzManuallySet&&!e)setSelectedTimezone('')
+}
+const[categories,setCategories]=useState<Category[]>([])
+const[loading,setLoading]=useState(true)
+
+useEffect(()=>{
+supabase.from('categories').select('id,name,color').order('name').then(({data,error})=>{
+if(data&&!error)setCategories(data)
+setLoading(false)
+})
+},[])
+
+const handleFiles=(newFiles:FileList|null)=>{
+if(!newFiles)return
+const arr=Array.from(newFiles).filter((f:File)=>f.type.startsWith('image/'))
+setFiles((prev:FileItem[])=>[...prev,...arr.map((f:File)=>({file:f,preview:URL.createObjectURL(f),caption:''}))])
+}
+
+const handleDrop=useCallback((e:React.DragEvent)=>{
+e.preventDefault()
+setDragOver(false)
+handleFiles(e.dataTransfer.files)
+},[])
+
+const removeFile=(i:number)=>setFiles((prev:FileItem[])=>prev.filter((_,idx)=>idx!==i))
+
+const[dateError,setDateError]=useState('')
+const[formError,setFormError]=useState('')
+
+const handleSubmit=async(e:React.FormEvent<HTMLFormElement>)=>{
+e.preventDefault()
+const form=new FormData(e.currentTarget)
+const date=form.get('date') as string
+if(!date){setDateError('Please select a day, month, and year.');return}
+setDateError('')
+setFormError('')
+setSaving(true)
+
+// Insert via server action — authenticated with user's session cookies
+const result=await createEvent(form)
+if('error' in result){
+setFormError(result.error)
+setSaving(false)
+return
+}
+const event={id:result.id}
+
+const rows:any[]=[]
+for(let i=0;i<files.length;i++){
+const{file,caption}=files[i]
+const ext=file.name.split('.').pop()
+const path=event.id+'/'+Date.now()+'-'+i+'.'+ext
+const{error:uploadError}=await supabase.storage.from('event-images').upload(path,file,{upsert:true})
+if(!uploadError){
+const{data}=supabase.storage.from('event-images').getPublicUrl(path)
+rows.push({event_id:event.id,image_url:data.publicUrl,caption,sort_order:i})
+}
+}
+if(rows.length>0)await supabase.from('event_images').insert(rows)
+router.push('/events/'+event.id)
+}
+
+const inp={width:'100%',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',color:'#1A1A1A',background:'#ffffff'}
+
+return(
+<div style={{padding:'20px 24px',maxWidth:'680px',margin:'0 auto'}}>
+<div style={{marginBottom:'20px'}}>
+<h1 style={{fontSize:'21px',fontWeight:700,color:'#1A1A1A',margin:0}}>Create a new event</h1>
+<p style={{fontSize:'12.5px',color:'#6B7280',marginTop:'4px',marginBottom:0}}>Fill in the details below and save</p>
+</div>
+
+<form onSubmit={handleSubmit}>
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
+<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
+<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Event details</div>
+</div>
+<div style={{padding:'18px',display:'flex',flexDirection:'column',gap:'14px'}}>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Event title *</label>
+<input name='title' required placeholder='e.g. Q2 Team Outing' style={inp}/>
+</div>
+<DateTimePicker timezoneOptions={TIMEZONE_KEYS} timezone={selectedTimezone} onTimezoneChange={tz=>{setSelectedTimezone(tz);setTzManuallySet(true)}}/>
+{dateError&&<div style={{fontSize:'12px',color:'#dc2626',padding:'5px 10px',background:'#fef2f2',borderRadius:'6px',border:'1px solid #fecaca'}}>{dateError}</div>}
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Location</label>
+<input name='location' placeholder='e.g. HCM Office' style={inp}/>
+</div>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>
+Category
+<a href='/admin/categories' target='_blank' style={{fontSize:'10px',color:'#FF6B00',marginLeft:'6px',textDecoration:'none',fontWeight:400}}>Manage ›</a>
+</label>
+<select name='category' style={{...inp,cursor:'pointer'}} disabled={loading}>
+<option value=''>{loading?'Loading...':'Select category'}</option>
+{categories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+</select>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Entity</label>
+<select name='entity' style={{...inp,cursor:'pointer'}} value={selectedEntity} onChange={(e)=>handleEntityChange(e.target.value)}>
+<option value=''>Select entity</option>
+{ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
+</select>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Office</label>
+<select name='office' style={{...inp,cursor:'pointer',opacity:selectedEntity?1:.5}} disabled={!selectedEntity}>
+<option value=''>Select office</option>
+{(selectedEntity?OFFICES[selectedEntity]||[]:Object.values(OFFICES).flat()).map(o=><option key={o} value={o}>{o}</option>)}
+</select>
+</div>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Tags <span style={{fontWeight:400,color:'#9CA3AF'}}>(comma separated)</span></label>
+<input name='tags' placeholder='e.g. team-building, q2-2026' style={inp}/>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Description</label>
+<textarea name='description' rows={3} placeholder='Describe what happened...' style={{...inp,resize:'vertical' as const}}/>
+</div>
+</div>
+</div>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
+<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
+<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Media and album</div>
+<div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginTop:'2px'}}>Upload preview images and link full album</div>
+</div>
+<div style={{padding:'18px',display:'flex',flexDirection:'column',gap:'14px'}}>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'8px'}}>Preview images</label>
+<div
+onDrop={handleDrop}
+onDragOver={(e:React.DragEvent)=>{e.preventDefault();setDragOver(true)}}
+onDragLeave={()=>setDragOver(false)}
+onClick={()=>(document.getElementById('fileInput') as HTMLInputElement)?.click()}
+style={{border:'2px dashed '+(dragOver?'#FF6B00':'#E5E7EB'),borderRadius:'8px',padding:'24px',textAlign:'center' as const,background:dragOver?'#FFF3EB':'#FAFAFA',cursor:'pointer',transition:'all .2s'}}
+>
+<div style={{fontSize:'24px',marginBottom:'6px'}}>📸</div>
+<div style={{fontSize:'13px',fontWeight:500,color:'#374151',marginBottom:'2px'}}>Drag and drop or click to select</div>
+<div style={{fontSize:'11px',color:'#9CA3AF'}}>Select multiple images at once</div>
+<input id='fileInput' type='file' multiple accept='image/*' style={{display:'none'}} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>handleFiles(e.target.files)}/>
+</div>
+{files.length>0&&(
+<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))',gap:'8px',marginTop:'10px'}}>
+{files.map((f:FileItem,i:number)=>(
+<div key={i} style={{position:'relative' as const}}>
+<img src={f.preview} alt='' style={{width:'100%',aspectRatio:'1',objectFit:'cover' as const,borderRadius:'6px',display:'block'}}/>
+<button type='button' onClick={()=>removeFile(i)} style={{position:'absolute' as const,top:'3px',right:'3px',background:'rgba(0,0,0,.6)',color:'#fff',border:'none',borderRadius:'50%',width:'20px',height:'20px',cursor:'pointer',fontSize:'11px',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+</div>
+))}
+</div>
+)}
+</div>
+<div style={{borderTop:'1px solid #F3F4F6',paddingTop:'14px'}}>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Google Drive full album link <span style={{fontWeight:400,color:'#9CA3AF'}}>(optional)</span></label>
+<input name='drive_link' value={driveLink} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setDriveLink(e.target.value)} placeholder='https://drive.google.com/drive/folders/...' style={inp}/>
+<div style={{fontSize:'11px',color:'#9CA3AF',marginTop:'4px'}}>Viewers can access the full album from this link</div>
+</div>
+</div>
+</div>
+
+{formError&&<div style={{fontSize:'12px',color:'#dc2626',padding:'8px 12px',background:'#fef2f2',borderRadius:'8px',border:'1px solid #fecaca',marginBottom:'4px'}}><strong>Save failed:</strong> {formError}</div>}
+<div style={{display:'flex',justifyContent:'flex-end',gap:'8px'}}>
+<a href='/' style={{background:'#ffffff',color:'#374151',border:'1px solid #E5E7EB',padding:'9px 18px',borderRadius:'8px',fontSize:'13px',textDecoration:'none',fontWeight:500}}>Cancel</a>
+<button type='submit' disabled={saving} style={{background:saving?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'9px 18px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:saving?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif'}}>
+{saving?'Saving...':'Save event'}
+</button>
+</div>
+</form>
+</div>
+)
+}
+
+================================================================
+FILE: app/auth/callback/route.ts
+================================================================
+
+import{createServerClient}from'@supabase/ssr'
+import{cookies}from'next/headers'
+import{NextResponse}from'next/server'
+
+export async function GET(request:Request){
+const requestUrl=new URL(request.url)
+const code=requestUrl.searchParams.get('code')
+const origin=requestUrl.origin
+
+if(code){
+const cookieStore=await cookies()
+const supabase=createServerClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+{
+cookies:{
+getAll(){return cookieStore.getAll()},
+setAll(cookiesToSet){
+cookiesToSet.forEach(({name,value,options})=>{
+cookieStore.set(name,value,options)
+})
+}
+}
+}
+)
+const{error}=await supabase.auth.exchangeCodeForSession(code)
+if(!error){
+return NextResponse.redirect(origin+'/')
+}
+}
+return NextResponse.redirect(origin+'/login?error=callback')
+}
+
+================================================================
+FILE: app/components/AttendanceBar.tsx
+================================================================
+
+'use client'
+import{useState,useMemo}from'react'
+import{supabase}from'@/app/lib/supabase'
+import{useToast,ToastContainer}from'@/app/components/Toast'
+
+type Attendance={id:string,event_id:string,user_email:string,user_name:string,status:'yes'|'maybe'|'no',created_at:string,updated_at:string}
+type Props={eventId:string,eventTitle:string,initialAttendances:Attendance[],isAdmin:boolean,userEmail:string,userName:string}
+
+const STATUS_META:{value:'yes'|'maybe'|'no',icon:string,label:string,color:string,bg:string,border:string}[]=[
+{value:'yes', icon:'✅',label:'Going',      color:'#16a34a',bg:'#f0fdf4',border:'#bbf7d0'},
+{value:'maybe',icon:'❓',label:'Maybe',      color:'#d97706',bg:'#fffbeb',border:'#fde68a'},
+{value:'no',  icon:'❌',label:"Can't go",   color:'#6b7280',bg:'#f9fafb',border:'#e5e7eb'},
+]
+
+function Avatar({name}:{name:string}){
+const initials=name.split(' ').map((n:string)=>n[0]||'').join('').toUpperCase().slice(0,2)
+return(
+<div style={{width:'28px',height:'28px',borderRadius:'50%',background:'#FFE4D1',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:700,color:'#E65C00',flexShrink:0}}>
+{initials}
+</div>
+)
+}
+
+export default function AttendanceBar({eventId,eventTitle,initialAttendances,isAdmin,userEmail,userName}:Props){
+const[attendances,setAttendances]=useState<Attendance[]>(initialAttendances)
+const[pendingStatus,setPendingStatus]=useState<'yes'|'maybe'|'no'|null>(null)
+const[error,setError]=useState('')
+const[expandedGroup,setExpandedGroup]=useState<'yes'|'maybe'|'no'|null>(null)
+const{toasts,show:showToast}=useToast()
+
+const isUpdating=pendingStatus!==null
+const myStatus=useMemo(()=>attendances.find(a=>a.user_email===userEmail)?.status,[attendances,userEmail])
+const countOf=(s:string)=>attendances.filter(a=>a.status===s).length
+const grouped=useMemo(()=>({
+yes:   attendances.filter(a=>a.status==='yes'),
+maybe: attendances.filter(a=>a.status==='maybe'),
+no:    attendances.filter(a=>a.status==='no'),
+}),[attendances])
+
+const respond=async(status:'yes'|'maybe'|'no')=>{
+if(!userEmail||isUpdating)return
+setPendingStatus(status)
+setError('')
+const existing=attendances.find(a=>a.user_email===userEmail)
+try{
+if(existing?.status===status){
+const{error:e}=await supabase.from('attendances').delete().eq('id',existing.id)
+if(e)throw e
+setAttendances(prev=>prev.filter(a=>a.id!==existing.id))
+}else{
+const{data,error:e}=await supabase
+.from('attendances')
+.upsert({event_id:eventId,user_email:userEmail,user_name:userName,status},{onConflict:'event_id,user_email'})
+.select().single()
+if(e)throw e
+if(data){
+setAttendances(prev=>existing?prev.map(a=>a.user_email===userEmail?data:a):[...prev,data])
+showToast('Response saved','success')
+}
+}
+}catch(e:any){
+const msg=e?.message||'Could not save. Please try again.'
+setError(msg)
+showToast(msg,'error')
+}finally{
+setPendingStatus(null)
+}
+}
+
+const exportToSheets=async()=>{
+const header=['Name','Email','Status','Event','Responded at']
+const rows=attendances.map(a=>[
+a.user_name,
+a.user_email,
+a.status==='yes'?'Going':a.status==='maybe'?'Maybe':"Can't go",
+eventTitle,
+new Date(a.updated_at||a.created_at).toLocaleString('en-GB'),
+])
+const tsv=[header,...rows].map(r=>r.join('\t')).join('\n')
+try{
+await navigator.clipboard.writeText(tsv)
+window.open('https://sheet.new','_blank','noopener,noreferrer')
+showToast('Data copied! Simply press Ctrl+V in the new tab.','success')
+}catch{
+showToast('Could not copy to clipboard. Try again.','error')
+}
+}
+
+const toggleGroup=(g:'yes'|'maybe'|'no')=>{
+setExpandedGroup((prev:'yes'|'maybe'|'no'|null)=>prev===g?null:g)
+}
+
+const yesCount=countOf('yes')
+const maybeCount=countOf('maybe')
+const noCount=countOf('no')
+const totalCount=attendances.length
+
+return(
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
+<ToastContainer toasts={toasts}/>
+
+{/* ── Header ── */}
+<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 18px',borderBottom:'1px solid #F3F4F6',flexWrap:'wrap' as const,gap:'8px'}}>
+<div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280'}}>Attendance</div>
+{totalCount>0&&(
+<span style={{fontSize:'12px',background:'#F3F4F6',color:'#374151',padding:'2px 8px',borderRadius:'999px',fontWeight:500}}>{totalCount} {totalCount===1?'response':'responses'}</span>
+)}
+</div>
+{isAdmin&&totalCount>0&&(
+<button
+onClick={exportToSheets}
+style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'12px',color:'#16a34a',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'7px',padding:'5px 12px',cursor:'pointer',fontWeight:600,fontFamily:'Noto Sans,sans-serif'}}
+>
+<svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='12' y1='18' x2='12' y2='12'/><line x1='9' y1='15' x2='15' y2='15'/></svg>
+Export to Google Sheets
+</button>
+)}
+</div>
+
+{/* ── RSVP buttons ── */}
+<div style={{padding:'14px 18px',borderBottom:isAdmin&&totalCount>0?'1px solid #F3F4F6':'none'}}>
+<div style={{display:'flex',gap:'8px',flexWrap:'wrap' as const,marginBottom:error?'10px':0}}>
+{STATUS_META.map(({value,icon,label,color,bg,border})=>{
+const active=myStatus===value
+const spinning=pendingStatus===value
+const count=countOf(value)
+return(
+<button
+key={value}
+onClick={()=>respond(value)}
+disabled={isUpdating||!userEmail}
+style={{
+display:'flex',alignItems:'center',gap:'6px',
+padding:'8px 16px',borderRadius:'8px',
+border:'1.5px solid '+(active?color:border),
+background:active?bg:'#ffffff',
+color:active?color:'#374151',
+fontSize:'13px',fontWeight:active?600:400,
+cursor:isUpdating||!userEmail?'not-allowed':'pointer',
+transition:'all .15s',
+opacity:isUpdating&&!spinning?.55:1,
+fontFamily:'Noto Sans,sans-serif',
+}}
+>
+{spinning
+?<span style={{width:'13px',height:'13px',border:'2px solid currentColor',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite',flexShrink:0}}/>
+:<span style={{fontSize:'15px',lineHeight:1}}>{icon}</span>
+}
+<span>{spinning?'Saving…':label}</span>
+{count>0&&!spinning&&(
+<span style={{fontSize:'11px',background:active?color+'22':'#F3F4F6',color:active?color:'#9CA3AF',padding:'0 6px',borderRadius:'999px',fontWeight:600}}>
+{count}
+</span>
+)}
+</button>
+)
+})}
+</div>
+{error&&<div style={{fontSize:'12px',color:'#dc2626',marginTop:'8px',padding:'6px 10px',background:'#fef2f2',borderRadius:'6px',border:'1px solid #fecaca'}}>{error}</div>}
+{!userEmail&&<div style={{fontSize:'12px',color:'#9CA3AF',marginTop:'6px'}}>Sign in to respond</div>}
+</div>
+
+{/* ── Admin dashboard ── */}
+{isAdmin&&totalCount>0&&(
+<div style={{padding:'14px 18px'}}>
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#9CA3AF',marginBottom:'12px'}}>Quick check</div>
+
+{/* Summary chips — clickable */}
+<div style={{display:'flex',gap:'8px',flexWrap:'wrap' as const,marginBottom:expandedGroup?'16px':0}}>
+{STATUS_META.map(({value,icon,label,color,bg,border})=>{
+const count=grouped[value].length
+if(count===0)return null
+const open=expandedGroup===value
+return(
+<button
+key={value}
+onClick={()=>toggleGroup(value)}
+style={{
+display:'flex',alignItems:'center',gap:'7px',
+padding:'8px 14px',borderRadius:'10px',
+border:'1.5px solid '+(open?color:border),
+background:open?bg:'#ffffff',
+color:open?color:'#374151',
+cursor:'pointer',fontSize:'13px',fontWeight:600,
+transition:'all .15s',
+fontFamily:'Noto Sans,sans-serif',
+boxShadow:open?'0 0 0 3px '+color+'22':'none',
+}}
+>
+<span style={{fontSize:'16px',lineHeight:1}}>{icon}</span>
+<span>{count} {label}</span>
+<svg width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' style={{transition:'transform .2s',transform:open?'rotate(180deg)':'rotate(0deg)',marginLeft:'2px',opacity:.6}}>
+<path d='M2 4l4 4 4-4'/>
+</svg>
+</button>
+)
+})}
+</div>
+
+{/* Expanded group list */}
+{expandedGroup&&grouped[expandedGroup]&&(
+<div style={{background:'#F9FAFB',borderRadius:'10px',border:'1px solid #F3F4F6',overflow:'hidden'}}>
+{grouped[expandedGroup].map((a,idx)=>(
+<div
+key={a.id}
+style={{
+display:'flex',alignItems:'center',justifyContent:'space-between',
+padding:'10px 14px',gap:'10px',
+borderTop:idx>0?'1px solid #F3F4F6':'none',
+background:'#ffffff',
+}}
+>
+<div style={{display:'flex',alignItems:'center',gap:'10px',minWidth:0}}>
+<Avatar name={a.user_name}/>
+<div style={{minWidth:0}}>
+<div style={{fontSize:'13px',fontWeight:600,color:'#1A1A1A',whiteSpace:'nowrap' as const,overflow:'hidden',textOverflow:'ellipsis'}}>{a.user_name}</div>
+<div style={{fontSize:'11.5px',color:'#9CA3AF',whiteSpace:'nowrap' as const,overflow:'hidden',textOverflow:'ellipsis'}}>{a.user_email}</div>
+</div>
+</div>
+<div style={{fontSize:'10.5px',color:'#B0B7C3',whiteSpace:'nowrap' as const,flexShrink:0}}>
+{new Date(a.updated_at||a.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+</div>
+</div>
+))}
+</div>
+)}
+</div>
+)}
+
+</div>
+)
+}
+
+
+================================================================
+FILE: app/components/DateTimePicker.tsx
+================================================================
+
+'use client'
+import{useState,useMemo,useRef}from'react'
+
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December']
+const YEARS=Array.from({length:21},(_,i)=>2015+i) // 2015-2035
+
+function daysInMonth(month:number,year:number){
+if(!month||!year)return 31
+return new Date(year,month,0).getDate()
+}
+
+const SEL:React.CSSProperties={
+width:'100%',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'7px 28px 7px 10px',
+fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',
+color:'#1A1A1A',background:'#ffffff',cursor:'pointer',
+appearance:'none' as const,
+backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+backgroundRepeat:'no-repeat',backgroundPosition:'right 8px center',
+}
+
+type Props={
+defaultDate?:string
+defaultTime?:string
+defaultTimezone?:string
+timezoneOptions:readonly string[]
+// When provided, timezone becomes a controlled field managed by parent
+timezone?:string
+onTimezoneChange?:(tz:string)=>void
+}
+
+export default function DateTimePicker({defaultDate='',defaultTime='',defaultTimezone='',timezoneOptions,timezone:controlledTz,onTimezoneChange}:Props){
+const[year,setYear]=useState(()=>{
+if(defaultDate){const[y]=defaultDate.split('-');return Number(y)||0}
+return 0
+})
+const[month,setMonth]=useState(()=>{
+if(defaultDate){const[,m]=defaultDate.split('-');return Number(m)||0}
+return 0
+})
+const[day,setDay]=useState(()=>{
+if(defaultDate){const[,,d]=defaultDate.split('-');return Number(d)||0}
+return 0
+})
+const[hour,setHour]=useState(()=>{
+if(defaultTime){const[h]=defaultTime.split(':');return h||''}
+return ''
+})
+const[minute,setMinute]=useState(()=>{
+if(defaultTime){const[,m]=defaultTime.split(':');return m||''}
+return ''
+})
+const minuteRef=useRef<HTMLInputElement>(null)
+const[internalTz,setInternalTz]=useState(defaultTimezone)
+const timezone=controlledTz!==undefined?controlledTz:internalTz
+const setTimezone=(v:string)=>{if(onTimezoneChange)onTimezoneChange(v);else setInternalTz(v)}
+
+const maxDay=useMemo(()=>daysInMonth(month,year),[month,year])
+const safeDay=day>maxDay?maxDay:day
+
+const dateValue=year&&month&&safeDay
+?`${year}-${String(month).padStart(2,'0')}-${String(safeDay).padStart(2,'0')}`
+:''
+const timeValue=hour?`${hour.padStart(2,'0')}:${(minute||'00').padStart(2,'0')}`:''
+
+const INP:React.CSSProperties={
+width:'100%',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'7px 10px',
+fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',
+color:'#1A1A1A',background:'#ffffff',textAlign:'center' as const,
+}
+
+const handleHourChange=(v:string)=>{
+const stripped=v.replace(/\D/g,'').slice(0,2)
+setHour(stripped)
+if(stripped.length===2){const n=Number(stripped);if(n>=0&&n<=23)minuteRef.current?.focus()}
+}
+const handleHourBlur=(v:string)=>{
+const n=Number(v)
+if(v===''||isNaN(n)||n<0||n>23){setHour('');setMinute('')}
+else setHour(String(n).padStart(2,'0'))
+}
+const handleMinuteChange=(v:string)=>{
+const stripped=v.replace(/\D/g,'').slice(0,2)
+setMinute(stripped)
+}
+const handleMinuteBlur=(v:string)=>{
+const n=Number(v)
+if(v===''||isNaN(n)||n<0||n>59)setMinute(hour?'00':'')
+else setMinute(String(n).padStart(2,'0'))
+}
+
+return(
+<>
+<input type='hidden' name='date' value={dateValue}/>
+<input type='hidden' name='event_time' value={timeValue}/>
+<input type='hidden' name='timezone' value={timezone}/>
+
+<div style={{display:'flex',flexDirection:'column' as const,gap:'14px'}}>
+{/* DATE */}
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>
+Date <span style={{color:'#DC2626'}}>*</span>
+</label>
+<div style={{display:'grid',gridTemplateColumns:'80px 1fr 90px',gap:'6px'}}>
+<select value={safeDay||''} onChange={e=>setDay(Number(e.target.value))} style={SEL} aria-label='Day'>
+<option value=''>Day</option>
+{Array.from({length:maxDay},(_,i)=>i+1).map(d=>(
+<option key={d} value={d}>{String(d).padStart(2,'0')}</option>
+))}
+</select>
+<select value={month||''} onChange={e=>setMonth(Number(e.target.value))} style={SEL} aria-label='Month'>
+<option value=''>Month</option>
+{MONTHS.map((m,i)=><option key={i+1} value={i+1}>{m}</option>)}
+</select>
+<select value={year||''} onChange={e=>setYear(Number(e.target.value))} style={SEL} aria-label='Year'>
+<option value=''>Year</option>
+{YEARS.map(y=><option key={y} value={y}>{y}</option>)}
+</select>
+</div>
+</div>
+
+{/* TIME + TIMEZONE in one row */}
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>
+Time <span style={{fontWeight:400,color:'#9CA3AF'}}>(optional)</span>
+</label>
+<div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:'4px',alignItems:'center'}}>
+<input
+value={hour}
+onChange={e=>handleHourChange(e.target.value)}
+onBlur={e=>handleHourBlur(e.target.value)}
+placeholder='HH'
+inputMode='numeric'
+maxLength={2}
+style={INP}
+aria-label='Hour'
+/>
+<span style={{fontSize:'13px',color:'#6B7280',fontWeight:500,textAlign:'center' as const}}>:</span>
+<input
+ref={minuteRef}
+value={minute}
+onChange={e=>handleMinuteChange(e.target.value)}
+onBlur={e=>handleMinuteBlur(e.target.value)}
+placeholder='MM'
+inputMode='numeric'
+maxLength={2}
+disabled={!hour}
+style={{...INP,opacity:hour?1:.4}}
+aria-label='Minute'
+/>
+</div>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>
+Timezone
+<span style={{fontWeight:400,color:'#9CA3AF',marginLeft:'4px',fontSize:'11px'}}>(time entered above is in this zone)</span>
+</label>
+<select value={timezone} onChange={e=>setTimezone(e.target.value)} disabled={!hour} style={{...SEL,opacity:hour?1:.45,width:'100%'}}>
+<option value=''>—</option>
+{timezoneOptions.map(tz=><option key={tz} value={tz}>{tz}</option>)}
+</select>
+</div>
+</div>
+</div>
+</>
+)
+}
+
+
+================================================================
+FILE: app/components/EventPill.tsx
+================================================================
+
+'use client'
+import{useState,useRef,useCallback,useEffect}from'react'
+import{createPortal}from'react-dom'
+import Image from'next/image'
+import Link from'next/link'
+
+const TOOLTIP_W=248
+const TOOLTIP_MAX_H=320
+const MARGIN=8 // min distance from viewport edge
+
+type EventData={
+id:string
+title:string
+date:string
+location?:string
+category?:string
+entity?:string
+office?:string
+event_time?:string
+timezone?:string
+description?:string
+firstImage?:string
+}
+
+type Pos={top:number,left:number}
+
+export default function EventPill({ev,color}:{ev:EventData,color:string}){
+const[show,setShow]=useState(false)
+const[pos,setPos]=useState<Pos>({top:0,left:0})
+const[mounted,setMounted]=useState(false)
+const timerRef=useRef<ReturnType<typeof setTimeout>|null>(null)
+const pillRef=useRef<HTMLDivElement>(null)
+const tappedRef=useRef(false)
+
+// Ensure we're on the client before attempting portal
+useEffect(()=>{setMounted(true)},[])
+
+const open=useCallback(()=>{
+if(!pillRef.current)return
+const rect=pillRef.current.getBoundingClientRect()
+const spaceBelow=window.innerHeight-rect.bottom
+const spaceAbove=rect.top
+const tooltipH=ev.firstImage?TOOLTIP_MAX_H:200
+
+// Prefer below; flip above if not enough room
+let top=spaceBelow>=tooltipH+MARGIN
+?rect.bottom+6
+:rect.top-tooltipH-6
+
+// Clamp vertically
+top=Math.max(MARGIN,Math.min(top,window.innerHeight-tooltipH-MARGIN))
+
+// Center horizontally over pill, then clamp
+const idealLeft=rect.left+rect.width/2-TOOLTIP_W/2
+const left=Math.max(MARGIN,Math.min(idealLeft,window.innerWidth-TOOLTIP_W-MARGIN))
+
+setPos({top,left})
+setShow(true)
+},[ev.firstImage])
+
+const close=useCallback(()=>{
+if(timerRef.current)clearTimeout(timerRef.current)
+setShow(false)
+},[])
+
+const onMouseEnter=()=>{timerRef.current=setTimeout(open,130)}
+const onMouseLeave=()=>close()
+
+const onTouchEnd=(e:React.TouchEvent)=>{
+if(!tappedRef.current){
+e.preventDefault()
+tappedRef.current=true
+open()
+setTimeout(()=>{tappedRef.current=false;setShow(false)},4000)
+}
+}
+
+const date=new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})
+
+const tooltip=(
+<div
+style={{
+position:'fixed',
+top:pos.top,
+left:pos.left,
+width:TOOLTIP_W,
+zIndex:9999,
+background:'#ffffff',
+border:'1px solid #E5E7EB',
+borderRadius:'12px',
+boxShadow:'0 8px 40px rgba(0,0,0,.14)',
+overflow:'hidden',
+pointerEvents:'none',
+}}
+>
+{ev.firstImage&&(
+<div style={{position:'relative',height:'88px',background:'#F3F4F6',flexShrink:0}}>
+<Image src={ev.firstImage} alt='' fill sizes='248px' style={{objectFit:'cover'}}/>
+</div>
+)}
+<div style={{padding:'10px 12px'}}>
+<div style={{fontSize:'13px',fontWeight:600,color:'#1A1A1A',marginBottom:'6px',lineHeight:1.3}}>{ev.title}</div>
+<div style={{fontSize:'11.5px',color:'#6B7280',lineHeight:1.65}}>
+<div>📅 {date}</div>
+{ev.event_time&&ev.timezone&&<div>🕐 {ev.event_time} · {ev.timezone}</div>}
+{ev.location&&<div>📍 {ev.location}</div>}
+</div>
+{(ev.category||ev.entity||ev.office)&&(
+<div style={{display:'flex',gap:'4px',flexWrap:'wrap' as const,marginTop:'7px'}}>
+{ev.category&&<span style={{fontSize:'10px',background:'#FFF3EB',color:'#FF6B00',padding:'1px 7px',borderRadius:'999px',fontWeight:600}}>{ev.category}</span>}
+{ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#374151',padding:'1px 7px',borderRadius:'999px'}}>{ev.entity}</span>}
+{ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#374151',padding:'1px 7px',borderRadius:'999px'}}>{ev.office}</span>}
+</div>
+)}
+{ev.description&&(
+<div style={{
+fontSize:'11.5px',color:'#6B7280',marginTop:'7px',lineHeight:1.5,
+overflow:'hidden',display:'-webkit-box',
+WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const,
+maxHeight:'36px',
+}}>
+{ev.description}
+</div>
+)}
+<div style={{fontSize:'10.5px',color:'#C4C9D4',marginTop:'8px',textAlign:'right' as const,fontStyle:'italic'}}>Click to open →</div>
+</div>
+</div>
+)
+
+return(
+<div ref={pillRef} style={{position:'relative'}} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+<Link
+href={'/events/'+ev.id}
+onTouchEnd={onTouchEnd}
+className='event-pill-link'
+style={{display:'block',padding:'2px 6px',borderRadius:'4px',fontSize:'10.5px',fontWeight:500,marginBottom:'2px',textDecoration:'none',background:color,color:'#ffffff',whiteSpace:'nowrap' as const,overflow:'hidden',textOverflow:'ellipsis'}}
+>
+{ev.title}
+</Link>
+{mounted&&show&&createPortal(tooltip,document.body)}
+</div>
+)
+}
+
+
+================================================================
+FILE: app/components/EventsFilterBar.tsx
+================================================================
+
+'use client'
+import{useRouter,useSearchParams}from'next/navigation'
+import{useCallback,useEffect,useState}from'react'
+import{supabase}from'@/app/lib/supabase'
+
+const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
+
+const SORT_OPTIONS=[
+{value:'newest',label:'Newest first'},
+{value:'oldest',label:'Oldest first'},
+{value:'az',label:'A → Z'},
+{value:'za',label:'Z → A'},
+]
+
+export default function EventsFilterBar(){
+const router=useRouter()
+const sp=useSearchParams()
+const search=sp.get('search')||''
+const category=sp.get('category')||''
+const entity=sp.get('entity')||''
+const sort=sp.get('sort')||'newest'
+const[categories,setCategories]=useState<{id:string,name:string}[]>([])
+const[searchVal,setSearchVal]=useState(search)
+
+useEffect(()=>{
+supabase.from('categories').select('id,name').order('name').then(({data})=>{
+if(data)setCategories(data)
+})
+},[])
+
+// Sync search input when URL changes
+useEffect(()=>{setSearchVal(search)},[search])
+
+const buildUrl=useCallback((params:Record<string,string>)=>{
+const base:Record<string,string>={}
+if(searchVal)base.search=searchVal
+if(category)base.category=category
+if(entity)base.entity=entity
+if(sort&&sort!=='newest')base.sort=sort
+Object.assign(base,params)
+// Reset to page 1 on filter change
+delete base.page
+Object.keys(base).forEach(k=>{if(!base[k])delete base[k]})
+const qs=Object.entries(base).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&')
+return qs?'/events?'+qs:'/events'
+},[searchVal,category,entity,sort])
+
+const hasFilters=!!(search||category||entity||sort!=='newest')
+
+const sel=(active:boolean):React.CSSProperties=>({
+height:'28px',padding:'0 8px',
+border:'1px solid '+(active?'#FF6B00':'#E5E7EB'),
+borderRadius:'6px',
+background:active?'#FFF3EB':'#ffffff',
+color:active?'#FF6B00':'#374151',
+fontSize:'12px',cursor:'pointer',outline:'none',
+fontWeight:active?600:400,
+})
+
+return(
+<div className='filter-bar' style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 24px',height:'42px',display:'flex',alignItems:'center',gap:'8px'}}>
+<form onSubmit={(e)=>{e.preventDefault();router.push(buildUrl({search:searchVal}))}} style={{display:'flex',alignItems:'center',position:'relative'}}>
+<svg style={{position:'absolute',left:'8px',color:'#9CA3AF',pointerEvents:'none'}} width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5'><circle cx='6.5' cy='6.5' r='5'/><path d='M11 11l3 3' strokeLinecap='round'/></svg>
+<input
+value={searchVal}
+onChange={(e)=>setSearchVal(e.target.value)}
+onBlur={()=>router.push(buildUrl({search:searchVal}))}
+placeholder='Search...'
+style={{height:'28px',width:'140px',border:'1px solid '+(search?'#FF6B00':'#E5E7EB'),borderRadius:'6px',padding:'0 10px 0 26px',fontSize:'12px',outline:'none',background:search?'#FFF3EB':'#ffffff',color:'#374151'}}
+/>
+</form>
+
+<select value={category} style={sel(!!category)} onChange={(e)=>router.push(buildUrl({category:e.target.value}))}>
+<option value=''>All categories</option>
+{categories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+</select>
+
+<select value={entity} style={sel(!!entity)} onChange={(e)=>router.push(buildUrl({entity:e.target.value}))}>
+<option value=''>All entities</option>
+{ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
+</select>
+
+<select value={sort} style={sel(sort!=='newest')} onChange={(e)=>router.push(buildUrl({sort:e.target.value}))}>
+{SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+</select>
+
+{hasFilters&&(
+<button onClick={()=>router.push('/events')} style={{fontSize:'11.5px',color:'#6B7280',background:'none',border:'none',cursor:'pointer',marginLeft:'4px',whiteSpace:'nowrap' as const}}>
+Clear ×
+</button>
+)}
+</div>
+)
+}
+
+
+================================================================
+FILE: app/components/FilterBar.tsx
+================================================================
+
+'use client'
+import{useRouter,useSearchParams}from'next/navigation'
+import{useCallback,useEffect,useState,useTransition}from'react'
+import{supabase}from'@/app/lib/supabase'
+
+const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
+const OFFICES:Record<string,string[]>={
+Vietnam:['Saigon','Hanoi','Can Tho'],
+Thailand:['Bangkok'],
+Egypt:['Cairo'],
+Germany:['Berlin'],
+}
+
+export default function FilterBar(){
+const router=useRouter()
+const sp=useSearchParams()
+const category=sp.get('category')||''
+const entity=sp.get('entity')||''
+const office=sp.get('office')||''
+const search=sp.get('search')||''
+const year=sp.get('year')||''
+const month=sp.get('month')||''
+
+const[categories,setCategories]=useState<{id:string,name:string}[]>([])
+const[searchInput,setSearchInput]=useState(search)
+const[isPending,startTransition]=useTransition()
+
+useEffect(()=>{
+supabase.from('categories').select('id,name').order('name').then(({data})=>{
+if(data)setCategories(data)
+})
+},[])
+
+// Keep local input in sync when URL changes (e.g. browser back/forward)
+useEffect(()=>{setSearchInput(search)},[search])
+
+const buildUrl=useCallback((params:Record<string,string>)=>{
+const base:Record<string,string>={}
+if(year)base.year=year
+if(month)base.month=month
+if(search)base.search=search
+if(category)base.category=category
+if(entity)base.entity=entity
+if(office)base.office=office
+Object.assign(base,params)
+Object.keys(base).forEach(k=>{if(!base[k])delete base[k]})
+const qs=Object.entries(base).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&')
+return qs?'/?'+qs:'/'
+},[year,month,search,category,entity,office])
+
+const navigate=(url:string)=>startTransition(()=>router.push(url))
+
+// Debounced search — fires 300ms after user stops typing
+useEffect(()=>{
+if(searchInput===search)return
+const t=setTimeout(()=>{
+startTransition(()=>router.push(buildUrl({search:searchInput})))
+},300)
+return()=>clearTimeout(t)
+},[searchInput]) // intentionally omits buildUrl/search to avoid re-triggering on URL change
+
+const officesForEntity=entity?OFFICES[entity]||[]:[]
+const hasFilters=!!(category||entity||office||search)
+
+const sel=(active:boolean)=>({
+height:'28px',padding:'0 8px',
+border:'1px solid '+(active?'#FF6B00':'#E5E7EB'),
+borderRadius:'6px',
+background:active?'#FFF3EB':'#ffffff',
+color:active?'#FF6B00':'#374151',
+fontSize:'12px',fontFamily:'Noto Sans,sans-serif',
+cursor:'pointer',outline:'none',
+fontWeight:active?600:400,
+transition:'opacity .15s',
+opacity:isPending?.6:1,
+} as React.CSSProperties)
+
+return(
+<div className='filter-bar' style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 16px',minHeight:'42px',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap' as const,paddingTop:'6px',paddingBottom:'6px',transition:'opacity .2s',opacity:isPending?.75:1}}>
+<span style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'.06em',marginRight:'4px'}}>Filter:</span>
+
+{/* Search input with debounce */}
+<div style={{position:'relative' as const,display:'flex',alignItems:'center'}}>
+<input
+value={searchInput}
+onChange={e=>setSearchInput(e.target.value)}
+placeholder='Search events…'
+style={{height:'28px',padding:'0 28px 0 8px',border:'1px solid '+(search?'#FF6B00':'#E5E7EB'),borderRadius:'6px',background:search?'#FFF3EB':'#ffffff',color:search?'#FF6B00':'#374151',fontSize:'12px',fontFamily:'Noto Sans,sans-serif',outline:'none',width:'140px',fontWeight:search?600:400,opacity:isPending?.6:1,transition:'opacity .15s'}}
+/>
+{searchInput&&(
+<button
+onClick={()=>{setSearchInput('');startTransition(()=>router.push(buildUrl({search:''})))}}
+style={{position:'absolute' as const,right:'5px',background:'none',border:'none',cursor:'pointer',color:'#9CA3AF',fontSize:'14px',lineHeight:1,padding:0,display:'flex',alignItems:'center'}}
+>×</button>
+)}
+</div>
+
+<select value={category} style={sel(!!category)} onChange={(e)=>navigate(buildUrl({category:e.target.value,office:''}))}>
+<option value=''>All categories</option>
+{categories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+</select>
+
+<select value={entity} style={sel(!!entity)} onChange={(e)=>navigate(buildUrl({entity:e.target.value,office:''}))}>
+<option value=''>All entities</option>
+{ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
+</select>
+
+{entity&&officesForEntity.length>0&&(
+<select value={office} style={sel(!!office)} onChange={(e)=>navigate(buildUrl({office:e.target.value}))}>
+<option value=''>All offices</option>
+{officesForEntity.map(o=><option key={o} value={o}>{o}</option>)}
+</select>
+)}
+
+{hasFilters&&(
+<button onClick={()=>{setSearchInput('');navigate(buildUrl({category:'',entity:'',office:'',search:''}))}} style={{fontSize:'11.5px',color:'#6B7280',background:'none',border:'none',cursor:'pointer',fontFamily:'Noto Sans,sans-serif',marginLeft:'4px',opacity:isPending?.6:1,transition:'opacity .15s'}}>
+Clear filters ×
+</button>
+)}
+
+{isPending&&<span style={{width:'14px',height:'14px',border:'2px solid #FF6B00',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite',marginLeft:'4px',flexShrink:0}}/>}
+</div>
+)
+}
+
+
+================================================================
+FILE: app/components/Header.tsx
+================================================================
+
+'use client'
+import{useState,useRef,useEffect}from'react'
+import Image from'next/image'
+import{signOut,setPreviewRole}from'@/app/lib/account-actions'
+
+type Props={initials:string,name:string,email:string,isRealAdmin:boolean,isPreviewing:boolean}
+
+export default function Header({initials,name,email,isRealAdmin,isPreviewing}:Props){
+const[menuOpen,setMenuOpen]=useState(false)
+const[dropOpen,setDropOpen]=useState(false)
+const dropRef=useRef<HTMLDivElement>(null)
+
+// Close dropdown on outside click
+useEffect(()=>{
+const h=(e:MouseEvent)=>{if(dropRef.current&&!dropRef.current.contains(e.target as Node))setDropOpen(false)}
+document.addEventListener('mousedown',h)
+return()=>document.removeEventListener('mousedown',h)
+},[])
+
+const navLink=(href:string,icon:React.ReactNode,label:string)=>(
+<a href={href} onClick={()=>setMenuOpen(false)} style={{padding:'10px 12px',borderRadius:'8px',fontSize:'14px',fontWeight:500,color:'#374151',textDecoration:'none',display:'flex',alignItems:'center',gap:'10px'}}>
+{icon}<span>{label}</span>
+</a>
+)
+
+return(
+<>
+<header style={{background:'#ffffff',borderBottom:'1px solid #E5E7EB',position:'sticky',top:0,zIndex:50}}>
+<div style={{maxWidth:'1200px',margin:'0 auto',padding:'0 16px',height:'52px',display:'flex',alignItems:'center',gap:'10px'}}>
+
+<Image src='https://jkefwcttcszndeebgkch.supabase.co/storage/v1/object/public/assets/gradion-logo.png' alt='Gradion' width={90} height={28} style={{height:'28px',width:'auto',flexShrink:0}}/>
+<div className='desktop-only' style={{width:'1px',height:'26px',background:'#E5E7EB',margin:'0 2px',flexShrink:0}}/>
+<span className='desktop-only' style={{fontSize:'13px',fontWeight:600,color:'#1A1A1A',marginRight:'4px',whiteSpace:'nowrap'}}>Wall</span>
+<div className='desktop-only' style={{width:'1px',height:'26px',background:'#E5E7EB',margin:'0 2px',flexShrink:0}}/>
+
+<nav className='desktop-only' style={{display:'flex',gap:'2px'}}>
+<a href='/' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>Calendar</a>
+<a href='/events' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>All Events</a>
+<a href='/images' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>Images</a>
+<a href='/admin/categories' style={{padding:'5px 10px',borderRadius:'6px',fontSize:'13px',fontWeight:500,color:'#374151',textDecoration:'none'}}>Categories</a>
+</nav>
+
+<div style={{flex:1}}/>
+
+<form className='desktop-only' method='GET' action='/' style={{display:'flex',alignItems:'center'}}>
+<div style={{position:'relative',display:'flex',alignItems:'center'}}>
+<svg style={{position:'absolute',left:'10px',color:'#9CA3AF'}} width='13' height='13' viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5'><circle cx='6.5' cy='6.5' r='5'/><path d='M11 11l3 3' strokeLinecap='round'/></svg>
+<input name='search' placeholder='Search events...' style={{height:'32px',width:'200px',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'0 12px 0 30px',fontSize:'12.5px',outline:'none',background:'#F9FAFB',color:'#1A1A1A'}}/>
+</div>
+</form>
+
+<a href='/admin/events/new' className='desktop-only' style={{background:'#FF6B00',color:'#fff',padding:'7px 14px',borderRadius:'8px',fontSize:'13px',fontWeight:500,textDecoration:'none',whiteSpace:'nowrap'}}>+ New event</a>
+
+{/* Avatar + dropdown */}
+<div ref={dropRef} style={{position:'relative',flexShrink:0}}>
+<button
+onClick={()=>setDropOpen(!dropOpen)}
+style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'none',cursor:'pointer',padding:'4px 6px',borderRadius:'8px'}}
+>
+<div style={{width:'30px',height:'30px',borderRadius:'50%',background:'#FF6B00',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#fff',flexShrink:0}}>{initials}</div>
+<div className='desktop-only' style={{display:'flex',flexDirection:'column',alignItems:'flex-start'}}>
+<span style={{fontSize:'12px',fontWeight:500,color:'#1A1A1A',lineHeight:1.2}}>{name.split(' ')[0]}</span>
+<span style={{fontSize:'10px',color:'#9CA3AF',lineHeight:1.2}}>{isPreviewing?'Member (preview)':'Admin'}</span>
+</div>
+<svg className='desktop-only' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='#9CA3AF' strokeWidth='1.5'><path d='M2 4l3 3 3-3'/></svg>
+</button>
+
+{dropOpen&&(
+<div style={{position:'absolute',top:'calc(100% + 6px)',right:0,width:'260px',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',boxShadow:'0 8px 32px rgba(0,0,0,.1)',overflow:'hidden',zIndex:100}}>
+{/* User info */}
+<div style={{padding:'14px 16px',borderBottom:'1px solid #F3F4F6'}}>
+<div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+<div style={{width:'36px',height:'36px',borderRadius:'50%',background:'#FF6B00',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'13px',fontWeight:700,color:'#fff',flexShrink:0}}>{initials}</div>
+<div>
+<div style={{fontSize:'13px',fontWeight:600,color:'#1A1A1A'}}>{name}</div>
+<div style={{fontSize:'11.5px',color:'#9CA3AF'}}>{email}</div>
+</div>
+</div>
+</div>
+
+{/* Preview as member — admin only */}
+{isRealAdmin&&(
+<div style={{borderBottom:'1px solid #F3F4F6'}}>
+{isPreviewing?(
+<form action={setPreviewRole.bind(null,'off')}>
+<button type='submit' style={{width:'100%',padding:'12px 16px',background:'#FFF3EB',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',fontSize:'13px',fontWeight:500,color:'#FF6B00',textAlign:'left' as const}}>
+<span style={{fontSize:'16px'}}>👁</span>
+<span>Exit member preview</span>
+</button>
+</form>
+):(
+<form action={setPreviewRole.bind(null,'member')}>
+<button type='submit' style={{width:'100%',padding:'12px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',fontSize:'13px',color:'#374151',textAlign:'left' as const}}>
+<span style={{fontSize:'16px'}}>👁</span>
+<span>Preview as Member</span>
+</button>
+</form>
+)}
+</div>
+)}
+
+{/* Sign out */}
+<form action={signOut}>
+<button type='submit' style={{width:'100%',padding:'12px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',fontSize:'13px',color:'#374151',textAlign:'left' as const}}>
+<span style={{fontSize:'16px'}}>🚪</span>
+<span>Sign out</span>
+</button>
+</form>
+</div>
+)}
+</div>
+
+{/* Mobile hamburger */}
+<button className='mobile-only' onClick={()=>setMenuOpen(!menuOpen)} aria-label='Menu' style={{width:'36px',height:'36px',border:'1px solid #E5E7EB',borderRadius:'8px',background:'#ffffff',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,color:'#374151'}}>
+{menuOpen
+?<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+:<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round'><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg>
+}
+</button>
+
+</div>
+
+{/* Mobile menu */}
+{menuOpen&&(
+<div className='mobile-only' style={{background:'#ffffff',borderTop:'1px solid #F3F4F6',padding:'12px 16px 16px'}}>
+<nav style={{display:'flex',flexDirection:'column' as const,gap:'2px',marginBottom:'12px'}}>
+{navLink('/',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>,'Calendar')}
+{navLink('/events',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/></svg>,'All Events')}
+{navLink('/images',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>,'Images')}
+{navLink('/admin/categories',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z'/><line x1='7' y1='7' x2='7.01' y2='7'/></svg>,'Categories')}
+</nav>
+<a href='/admin/events/new' style={{display:'block',background:'#FF6B00',color:'#fff',padding:'10px 16px',borderRadius:'8px',fontSize:'14px',fontWeight:500,textDecoration:'none',textAlign:'center' as const,marginBottom:'12px'}}>+ New event</a>
+<form method='GET' action='/'>
+<div style={{position:'relative',display:'flex',alignItems:'center'}}>
+<svg style={{position:'absolute',left:'10px',color:'#9CA3AF'}} width='13' height='13' viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5'><circle cx='6.5' cy='6.5' r='5'/><path d='M11 11l3 3' strokeLinecap='round'/></svg>
+<input name='search' placeholder='Search events...' style={{width:'100%',height:'38px',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'0 12px 0 30px',fontSize:'14px',outline:'none',background:'#F9FAFB',color:'#1A1A1A'}}/>
+</div>
+</form>
+</div>
+)}
+
+</header>
+
+{/* Preview mode banner */}
+{isPreviewing&&(
+<div style={{background:'#FFF3EB',borderBottom:'1px solid #FFD4B8',padding:'8px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px',position:'sticky',top:'52px',zIndex:49}}>
+<span style={{fontSize:'13px',color:'#C2410C',fontWeight:500}}>👁 Previewing as Member — admin features are hidden</span>
+<form action={setPreviewRole.bind(null,'off')}>
+<button type='submit' style={{fontSize:'12px',fontWeight:600,color:'#FF6B00',background:'none',border:'1px solid #FF6B00',borderRadius:'6px',padding:'3px 10px',cursor:'pointer'}}>Exit preview</button>
+</form>
+</div>
+)}
+</>
+)
+}
+
+
+================================================================
+FILE: app/components/ReactionsComments.tsx
+================================================================
+
+'use client'
+import{useState,useRef,useCallback,useEffect}from'react'
+import{supabase}from'@/app/lib/supabase'
+import{useToast,ToastContainer}from'@/app/components/Toast'
+
+const QUICK_EMOJIS=['👍','❤️','🎉','😮','😂','🔥','🙌','💪','👏','😍']
+
+type Reaction={id:string,event_id:string,user_email:string,emoji:string}
+type Comment={id:string,event_id:string,user_email:string,user_name:string,content:string,created_at:string,sending?:boolean}
+
+export default function ReactionsComments({eventId,initialReactions=[],initialComments=[],userEmail,userName}:{eventId:string,initialReactions:Reaction[],initialComments:Comment[],userEmail:string,userName:string}){
+const[reactions,setReactions]=useState<Reaction[]>(initialReactions)
+const[comments,setComments]=useState<Comment[]>(initialComments)
+const[newComment,setNewComment]=useState('')
+const[reactingEmoji,setReactingEmoji]=useState<string|null>(null)
+const[showPicker,setShowPicker]=useState(false)
+const[customEmoji,setCustomEmoji]=useState('')
+const pickerRef=useRef<HTMLDivElement>(null)
+const postingRef=useRef(false)
+const{toasts,show:showToast}=useToast()
+
+useEffect(()=>{
+const handler=(e:MouseEvent)=>{
+if(pickerRef.current&&!pickerRef.current.contains(e.target as Node))setShowPicker(false)
+}
+document.addEventListener('mousedown',handler)
+return()=>document.removeEventListener('mousedown',handler)
+},[])
+
+const toggleReaction=useCallback(async(emoji:string)=>{
+if(!userEmail||reactingEmoji)return
+setReactingEmoji(emoji)
+const existing=reactions.find(r=>r.user_email===userEmail&&r.emoji===emoji)
+const snapshot=reactions
+
+// Optimistic: apply change immediately
+if(existing){
+setReactions(prev=>prev.filter(r=>r.id!==existing.id))
+}else{
+const optimistic:Reaction={id:'opt-'+Date.now(),event_id:eventId,user_email:userEmail,emoji}
+setReactions(prev=>[...prev,optimistic])
+}
+
+try{
+if(existing){
+const{error}=await supabase.from('reactions').delete().eq('id',existing.id)
+if(error)throw error
+}else{
+const{data,error}=await supabase.from('reactions').insert({event_id:eventId,user_email:userEmail,emoji}).select().single()
+if(error)throw error
+// Swap optimistic entry for real DB row
+if(data)setReactions(prev=>prev.map(r=>r.id.startsWith('opt-')&&r.emoji===emoji&&r.user_email===userEmail?data:r))
+}
+}catch{
+setReactions(snapshot)
+showToast('Could not save reaction. Please try again.','error')
+}finally{
+setReactingEmoji(null)
+setShowPicker(false)
+setCustomEmoji('')
+}
+},[userEmail,reactingEmoji,reactions,eventId,showToast])
+
+const postComment=async()=>{
+const content=newComment.trim()
+if(!content||!userEmail||postingRef.current)return
+postingRef.current=true
+
+const tempId='opt-'+Date.now()
+const optimistic:Comment={id:tempId,event_id:eventId,user_email:userEmail,user_name:userName,content,created_at:new Date().toISOString(),sending:true}
+setComments(prev=>[...prev,optimistic])
+setNewComment('')
+
+try{
+const{data,error}=await supabase.from('comments').insert({event_id:eventId,user_email:userEmail,user_name:userName,content}).select().single()
+if(error)throw error
+if(data)setComments(prev=>prev.map(c=>c.id===tempId?data:c))
+}catch{
+setComments(prev=>prev.filter(c=>c.id!==tempId))
+setNewComment(content)
+showToast('Could not post comment. Please try again.','error')
+}finally{
+postingRef.current=false
+}
+}
+
+const deleteComment=async(commentId:string,commentEmail:string)=>{
+if(commentEmail!==userEmail)return
+setComments(prev=>prev.filter(c=>c.id!==commentId))
+const{error}=await supabase.from('comments').delete().eq('id',commentId)
+if(error){
+showToast('Could not delete comment.','error')
+// revert would need the full comment object — instead just reload isn't worth complexity
+}
+}
+
+const getReactionCount=(emoji:string)=>reactions.filter(r=>r.emoji===emoji).length
+const hasReacted=(emoji:string)=>reactions.some(r=>r.user_email===userEmail&&r.emoji===emoji)
+const allUniqueEmojis=Array.from(new Set(reactions.map(r=>r.emoji)))
+const getInitials=(name:string)=>name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)
+
+const timeAgo=(dateStr:string)=>{
+const diff=Date.now()-new Date(dateStr).getTime()
+const mins=Math.floor(diff/60000)
+if(mins<1)return'just now'
+if(mins<60)return mins+'m ago'
+const hrs=Math.floor(mins/60)
+if(hrs<24)return hrs+'h ago'
+return Math.floor(hrs/24)+'d ago'
+}
+
+return(
+<>
+<ToastContainer toasts={toasts}/>
+<div style={{display:'flex',flexDirection:'column',gap:'16px'}}>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px'}}>
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Reactions</div>
+
+<div style={{display:'flex',flexWrap:'wrap' as const,gap:'8px',alignItems:'center'}}>
+{allUniqueEmojis.map(emoji=>{
+const count=getReactionCount(emoji)
+const reacted=hasReacted(emoji)
+const isInFlight=reactingEmoji===emoji
+return(
+<button key={emoji} onClick={()=>toggleReaction(emoji)} disabled={!!reactingEmoji} style={{display:'flex',alignItems:'center',gap:'5px',padding:'6px 12px',borderRadius:'999px',border:'1px solid',borderColor:reacted?'#FF6B00':'#E5E7EB',background:reacted?'#FF6B00':'#ffffff',color:reacted?'#ffffff':'#1A1A1A',fontSize:'13px',cursor:reactingEmoji?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',fontWeight:500,opacity:reactingEmoji&&!isInFlight?.6:1,transition:'all .12s'}}>
+{isInFlight
+?<span style={{width:'14px',height:'14px',border:'1.5px solid currentColor',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite'}}/>
+:<span style={{fontSize:'16px'}}>{emoji}</span>
+}
+<span>{count}</span>
+</button>
+)
+})}
+
+<div style={{position:'relative' as const}} ref={pickerRef}>
+<button onClick={()=>setShowPicker(!showPicker)} style={{display:'flex',alignItems:'center',gap:'5px',padding:'6px 12px',borderRadius:'999px',border:'1px dashed #E5E7EB',background:'#F9FAFB',color:'#6B7280',fontSize:'13px',cursor:'pointer',fontFamily:'Noto Sans,sans-serif'}}>
+<span style={{fontSize:'16px'}}>+</span><span>React</span>
+</button>
+
+{showPicker&&(
+<div style={{position:'absolute' as const,top:'calc(100% + 6px)',left:0,background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'12px',zIndex:100,boxShadow:'0 4px 20px rgba(0,0,0,.1)',width:'280px'}}>
+<div style={{fontSize:'11px',fontWeight:600,color:'#6B7280',marginBottom:'8px',textTransform:'uppercase' as const,letterSpacing:'.05em'}}>Quick pick</div>
+<div style={{display:'flex',flexWrap:'wrap' as const,gap:'4px',marginBottom:'10px'}}>
+{QUICK_EMOJIS.map(emoji=>(
+<button key={emoji} onClick={()=>toggleReaction(emoji)} style={{width:'36px',height:'36px',borderRadius:'8px',border:'1px solid',borderColor:hasReacted(emoji)?'#FF6B00':'#F3F4F6',background:hasReacted(emoji)?'#FFF3EB':'#F9FAFB',fontSize:'20px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+{emoji}
+</button>
+))}
+</div>
+<div style={{borderTop:'1px solid #F3F4F6',paddingTop:'10px'}}>
+<div style={{fontSize:'11px',fontWeight:600,color:'#6B7280',marginBottom:'6px',textTransform:'uppercase' as const,letterSpacing:'.05em'}}>Custom emoji</div>
+<div style={{display:'flex',gap:'6px'}}>
+<input value={customEmoji} onChange={(e)=>setCustomEmoji(e.target.value)} placeholder='Paste any emoji...' style={{flex:1,height:'32px',border:'1px solid #E5E7EB',borderRadius:'6px',padding:'0 10px',fontSize:'16px',outline:'none',fontFamily:'Noto Sans,sans-serif'}}/>
+<button onClick={()=>{if(customEmoji.trim())toggleReaction(customEmoji.trim())}} disabled={!customEmoji.trim()} style={{height:'32px',padding:'0 12px',background:customEmoji.trim()?'#FF6B00':'#d1d5db',color:'#fff',border:'none',borderRadius:'6px',fontSize:'12px',fontWeight:500,cursor:customEmoji.trim()?'pointer':'not-allowed',fontFamily:'Noto Sans,sans-serif'}}>Add</button>
+</div>
+</div>
+</div>
+)}
+</div>
+</div>
+</div>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px'}}>
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'14px'}}>Comments ({comments.filter(c=>!c.sending).length+(comments.some(c=>c.sending)?1:0)})</div>
+
+{comments.length>0&&(
+<div style={{display:'flex',flexDirection:'column' as const,gap:'14px',marginBottom:'16px'}}>
+{comments.map(comment=>(
+<div key={comment.id} style={{display:'flex',gap:'10px',opacity:comment.sending?.65:1,transition:'opacity .2s'}}>
+<div style={{width:'32px',height:'32px',borderRadius:'50%',background:'#FFE4D1',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#E65C00',flexShrink:0}}>
+{getInitials(comment.user_name)}
+</div>
+<div style={{flex:1}}>
+<div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'3px',flexWrap:'wrap' as const}}>
+<span style={{fontSize:'13px',fontWeight:500,color:'#1A1A1A'}}>{comment.user_name}</span>
+{comment.sending
+?<span style={{fontSize:'11px',color:'#9CA3AF',display:'flex',alignItems:'center',gap:'4px'}}>
+<span style={{width:'9px',height:'9px',border:'1.5px solid #9CA3AF',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'att-spin .6s linear infinite'}}/>
+Sending…
+</span>
+:<span style={{fontSize:'11px',color:'#9CA3AF'}}>{timeAgo(comment.created_at)}</span>
+}
+{!comment.sending&&comment.user_email===userEmail&&(
+<button onClick={()=>deleteComment(comment.id,comment.user_email)} style={{fontSize:'11px',color:'#9CA3AF',background:'none',border:'none',cursor:'pointer',marginLeft:'auto',fontFamily:'Noto Sans,sans-serif'}}>Delete</button>
+)}
+</div>
+<div style={{fontSize:'13px',color:'#374151',lineHeight:1.6}}>{comment.content}</div>
+</div>
+</div>
+))}
+</div>
+)}
+
+{comments.length===0&&(
+<div className='empty-state' style={{marginBottom:'12px'}}>
+<svg width='36' height='36' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/></svg>
+<span>No comments yet. Be the first!</span>
+</div>
+)}
+
+<div style={{display:'flex',gap:'8px',alignItems:'flex-end'}}>
+<div style={{width:'32px',height:'32px',borderRadius:'50%',background:'#FF6B00',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#fff',flexShrink:0}}>
+{getInitials(userName)}
+</div>
+<textarea
+value={newComment}
+onChange={(e)=>setNewComment(e.target.value)}
+onKeyDown={(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();postComment()}}}
+placeholder='Write a comment… (Enter to post)'
+rows={2}
+style={{flex:1,border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',resize:'none' as const,color:'#1A1A1A',transition:'opacity .15s'}}
+/>
+<button
+onClick={postComment}
+disabled={!newComment.trim()||!userEmail}
+style={{display:'flex',alignItems:'center',justifyContent:'center',background:!newComment.trim()||!userEmail?'#d1d5db':'#FF6B00',color:'#fff',border:'none',padding:'8px 16px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:!newComment.trim()||!userEmail?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',flexShrink:0,minWidth:'52px'}}
+>
+Post
+</button>
+</div>
+</div>
+
+</div>
+</>
+)
+}
+
+
+================================================================
+FILE: app/components/Toast.tsx
+================================================================
+
+'use client'
+import{useState,useCallback,useRef}from'react'
+
+type ToastItem={id:number,message:string,type:'success'|'error'}
+
+export function useToast(){
+const[toasts,setToasts]=useState<ToastItem[]>([])
+const counter=useRef(0)
+
+const show=useCallback((message:string,type:'success'|'error'='success')=>{
+const id=++counter.current
+setToasts(prev=>[...prev,{id,message,type}])
+setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==id)),3500)
+},[])
+
+return{toasts,show}
+}
+
+export function ToastContainer({toasts}:{toasts:ToastItem[]}){
+if(toasts.length===0)return null
+return(
+<div style={{position:'fixed',bottom:'24px',right:'24px',display:'flex',flexDirection:'column' as const,gap:'8px',zIndex:9999,pointerEvents:'none'}}>
+{toasts.map(t=>(
+<div key={t.id} style={{
+display:'flex',alignItems:'center',gap:'10px',
+padding:'10px 16px',
+borderRadius:'10px',
+background:t.type==='error'?'#1f1f1f':'#1f1f1f',
+boxShadow:'0 4px 20px rgba(0,0,0,.18)',
+fontSize:'13px',fontWeight:500,color:'#ffffff',
+minWidth:'220px',maxWidth:'340px',
+animation:'toast-in .2s ease',
+}}>
+<span style={{fontSize:'15px'}}>{t.type==='success'?'✓':'⚠'}</span>
+<span style={{color:t.type==='error'?'#fca5a5':'#86efac'}}>{t.message}</span>
+</div>
+))}
+</div>
+)
+}
+
+
+================================================================
+FILE: app/events/[id]/edit/DeleteButton.tsx
+================================================================
+
+'use client'
+import{useTransition}from'react'
+import{deleteEvent}from'./actions'
+
+export default function DeleteButton({eventId}:{eventId:string}){
+const[pending,startTransition]=useTransition()
+
+const handleClick=()=>{
+if(!confirm('Delete this event? This cannot be undone.'))return
+const formData=new FormData()
+formData.append('id',eventId)
+startTransition(()=>deleteEvent(formData))
+}
+
+return(
+<button onClick={handleClick} disabled={pending} style={{background:pending?'#9ca3af':'#dc2626',color:'#fff',border:'none',padding:'7px 14px',borderRadius:'6px',fontSize:'13px',fontWeight:500,cursor:pending?'not-allowed':'pointer'}}>
+{pending?'Deleting...':'Delete event'}
+</button>
+)
+}
+
+================================================================
+FILE: app/events/[id]/edit/actions.ts
+================================================================
+
+'use server'
+import{getServerSupabase}from'@/app/lib/supabaseServer'
+import{redirect}from'next/navigation'
+import{revalidatePath}from'next/cache'
+
+export async function updateEvent(formData:FormData){
+const supabase=await getServerSupabase()
+const id=formData.get('id') as string
+const title=formData.get('title') as string
+const date=formData.get('date') as string
+const description=formData.get('description') as string
+const location=formData.get('location') as string
+const drive_link=formData.get('drive_link') as string
+const category=formData.get('category') as string
+const entity=formData.get('entity') as string
+const office=formData.get('office') as string
+const tagsRaw=formData.get('tags') as string
+const tags=tagsRaw?tagsRaw.split(',').map((t:string)=>t.trim()).filter(Boolean):[]
+const{error}=await supabase.from('events').update({
+title,date,description,location,tags,
+drive_link:drive_link||null,
+category:category||null,
+entity:entity||null,
+office:office||null,
+}).eq('id',id)
+if(error){console.error('update error:',error);return}
+revalidatePath('/')
+revalidatePath('/events')
+revalidatePath('/events/'+id)
+redirect('/events/'+id)
+}
+
+export async function deleteEvent(formData:FormData){
+const supabase=await getServerSupabase()
+const id=formData.get('id') as string
+const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id)
+if(images&&images.length>0){
+const paths=images.map((img:any)=>{const parts=img.image_url.split('/event-images/');return parts[1]||''}).filter(Boolean)
+if(paths.length>0)await supabase.storage.from('event-images').remove(paths)
+}
+await supabase.from('event_images').delete().eq('event_id',id)
+await supabase.from('events').delete().eq('id',id)
+revalidatePath('/')
+revalidatePath('/events')
+redirect('/')
+}
+
+export async function deleteImage(formData:FormData){
+const supabase=await getServerSupabase()
+const imageId=formData.get('image_id') as string
+const eventId=formData.get('event_id') as string
+const imageUrl=formData.get('image_url') as string
+const parts=(imageUrl||'').split('/event-images/')
+if(parts[1])await supabase.storage.from('event-images').remove([parts[1]])
+await supabase.from('event_images').delete().eq('id',imageId)
+revalidatePath('/events/'+eventId)
+redirect('/events/'+eventId+'/edit')
+}
+
+
+================================================================
+FILE: app/events/[id]/edit/page.tsx
+================================================================
+
+import{getServerSupabase}from'@/app/lib/supabaseServer'
+import{notFound}from'next/navigation'
+import{updateEvent,deleteEvent,deleteImage}from'./actions'
+import DeleteButton from'./DeleteButton'
+import DateTimePicker from'@/app/components/DateTimePicker'
+import Image from'next/image'
+import{TIMEZONE_KEYS}from'@/app/lib/timezones'
+
+const ENTITIES=['Vietnam','Thailand','Egypt','Germany']
+const OFFICES:Record<string,string[]>={
+Vietnam:['Saigon','Hanoi','Can Tho'],
+Thailand:['Bangkok'],
+Egypt:['Cairo'],
+Germany:['Berlin'],
+}
+
+export default async function EditEventPage(props:any){
+const supabase=await getServerSupabase()
+const{id}=await props.params
+const{data:event}=await supabase.from('events').select('*').eq('id',id).single()
+if(!event)return notFound()
+const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id).order('sort_order')
+const{data:categories}=await supabase.from('categories').select('id,name').order('name')
+const tagsStr=event.tags?event.tags.join(', '):''
+const inp={width:'100%',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',color:'#1A1A1A',background:'#ffffff'}
+
+return(
+<div style={{padding:'20px 24px',maxWidth:'680px',margin:'0 auto'}}>
+<div style={{marginBottom:'20px'}}>
+<h1 style={{fontSize:'21px',fontWeight:700,color:'#1A1A1A',margin:0}}>Edit event</h1>
+<p style={{fontSize:'12.5px',color:'#6B7280',marginTop:'4px',marginBottom:0}}>{event.title}</p>
+</div>
+
+<form action={updateEvent}>
+<input type='hidden' name='id' value={id}/>
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
+<div style={{background:'#1A1A1A',padding:'12px 18px'}}>
+<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Event details</div>
+</div>
+<div style={{padding:'18px',display:'flex',flexDirection:'column',gap:'14px'}}>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Event title</label>
+<input name='title' required defaultValue={event.title} style={inp}/>
+</div>
+<DateTimePicker
+defaultDate={event.date||''}
+defaultTime={event.event_time||''}
+defaultTimezone={event.timezone||''}
+timezoneOptions={TIMEZONE_KEYS}
+/>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Location</label>
+<input name='location' defaultValue={event.location||''} style={inp}/>
+</div>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Category</label>
+<select name='category' defaultValue={event.category||''} style={{...inp,cursor:'pointer'}}>
+<option value=''>Select...</option>
+{categories?.map((c:any)=>(
+<option key={c.id} value={c.name}>{c.name}</option>
+))}
+</select>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Entity</label>
+<select name='entity' defaultValue={event.entity||''} style={{...inp,cursor:'pointer'}}>
+<option value=''>Select...</option>
+{ENTITIES.map(e=>(
+<option key={e} value={e}>{e}</option>
+))}
+</select>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Office</label>
+<select name='office' defaultValue={event.office||''} style={{...inp,cursor:'pointer'}}>
+<option value=''>Select...</option>
+{Object.values(OFFICES).flat().map(o=>(
+<option key={o} value={o}>{o}</option>
+))}
+</select>
+</div>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Tags</label>
+<input name='tags' defaultValue={tagsStr} placeholder='team-building, q2-2026' style={inp}/>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Google Drive album link</label>
+<input name='drive_link' defaultValue={event.drive_link||''} placeholder='https://drive.google.com/drive/folders/...' style={inp}/>
+</div>
+<div>
+<label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Description</label>
+<textarea name='description' rows={4} defaultValue={event.description||''} style={{...inp,resize:'vertical' as const}}/>
+</div>
+<div style={{display:'flex',justifyContent:'flex-end',paddingTop:'8px',borderTop:'1px solid #F3F4F6'}}>
+<button type='submit' style={{background:'#FF6B00',color:'#fff',border:'none',padding:'9px 18px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:'pointer',fontFamily:'Noto Sans,sans-serif'}}>Save changes</button>
+</div>
+</div>
+</div>
+</form>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
+<div style={{background:'#1A1A1A',padding:'12px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+<div style={{fontSize:'12px',fontWeight:600,color:'#ffffff'}}>Preview images</div>
+<a href={'/events/'+id+'/upload'} style={{fontSize:'12px',background:'#FF6B00',color:'#fff',padding:'4px 12px',borderRadius:'5px',textDecoration:'none',fontWeight:500}}>+ Add more</a>
+</div>
+<div style={{padding:'16px'}}>
+{images&&images.length>0?(
+<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))',gap:'10px'}}>
+{images.map((img:any)=>(
+<div key={img.id} style={{position:'relative'}}>
+<div style={{position:'relative',aspectRatio:'4/3',borderRadius:'6px',overflow:'hidden'}}><Image src={img.image_url} alt={img.caption||''} fill sizes='(max-width:640px) 50vw, 180px' style={{objectFit:'cover'}}/></div>
+<form action={deleteImage} style={{position:'absolute',top:'4px',right:'4px'}}>
+<input type='hidden' name='image_id' value={img.id}/>
+<input type='hidden' name='event_id' value={id}/>
+<input type='hidden' name='image_url' value={img.image_url}/>
+<button type='submit' style={{background:'rgba(220,38,38,.85)',color:'#fff',border:'none',borderRadius:'50%',width:'22px',height:'22px',cursor:'pointer',fontSize:'11px'}}>x</button>
+</form>
+</div>
+))}
+</div>
+):(
+<div style={{padding:'24px',textAlign:'center' as const,color:'#9CA3AF',fontSize:'13px'}}>No images yet</div>
+)}
+</div>
+</div>
+
+<div style={{background:'#fff',border:'1px solid #FEE2E2',borderRadius:'12px',overflow:'hidden'}}>
+<div style={{padding:'14px 18px',borderBottom:'1px solid #FEE2E2'}}>
+<div style={{fontSize:'13px',fontWeight:600,color:'#DC2626'}}>Danger zone</div>
+<div style={{fontSize:'12px',color:'#9CA3AF',marginTop:'2px'}}>This cannot be undone</div>
+</div>
+<div style={{padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+<div>
+<div style={{fontSize:'13px',fontWeight:500,color:'#374151'}}>Delete this event</div>
+<div style={{fontSize:'12px',color:'#9CA3AF'}}>Removes the event and all images permanently</div>
+</div>
+<DeleteButton eventId={id}/>
+</div>
+</div>
+
+</div>
+)
+}
+
+================================================================
+FILE: app/events/[id]/loading.tsx
+================================================================
+
+export default function Loading(){
+const A='sk-pulse 1.4s ease-in-out infinite'
+return(
+<div style={{padding:'20px 24px',maxWidth:'860px',margin:'0 auto'}}>
+<div style={{height:'12px',background:'#EBEBEB',borderRadius:'4px',width:'120px',marginBottom:'16px',animation:A}}/>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'24px 28px',marginBottom:'16px',animation:A}}>
+<div style={{height:'24px',background:'#EBEBEB',borderRadius:'4px',width:'55%',marginBottom:'12px'}}/>
+<div style={{height:'12px',background:'#EBEBEB',borderRadius:'4px',width:'38%',marginBottom:'7px'}}/>
+<div style={{height:'12px',background:'#EBEBEB',borderRadius:'4px',width:'30%',marginBottom:'16px'}}/>
+<div style={{height:'13px',background:'#EBEBEB',borderRadius:'4px',width:'92%',marginBottom:'6px'}}/>
+<div style={{height:'13px',background:'#EBEBEB',borderRadius:'4px',width:'80%',marginBottom:'6px'}}/>
+<div style={{height:'13px',background:'#EBEBEB',borderRadius:'4px',width:'65%',marginBottom:'14px'}}/>
+<div style={{display:'flex',gap:'6px'}}>
+{[70,55,55].map((w,i)=><div key={i} style={{height:'20px',width:w,background:'#EBEBEB',borderRadius:'999px'}}/>)}
+</div>
+</div>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px',marginBottom:'16px',animation:A}}>
+<div style={{height:'11px',background:'#EBEBEB',borderRadius:'4px',width:'80px',marginBottom:'14px'}}/>
+<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:'10px'}}>
+{Array.from({length:4}).map((_,i)=>(
+<div key={i} style={{aspectRatio:'4/3',background:'#EBEBEB',borderRadius:'8px'}}/>
+))}
+</div>
+</div>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px',marginBottom:'16px',animation:A}}>
+<div style={{height:'11px',background:'#EBEBEB',borderRadius:'4px',width:'80px',marginBottom:'14px'}}/>
+<div style={{display:'flex',gap:'8px'}}>
+{Array.from({length:3}).map((_,i)=>(
+<div key={i} style={{height:'34px',width:'80px',background:'#EBEBEB',borderRadius:'8px'}}/>
+))}
+</div>
+</div>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px',animation:A}}>
+<div style={{height:'11px',background:'#EBEBEB',borderRadius:'4px',width:'70px',marginBottom:'12px'}}/>
+<div style={{display:'flex',gap:'8px'}}>
+{Array.from({length:4}).map((_,i)=>(
+<div key={i} style={{height:'30px',width:'60px',background:'#EBEBEB',borderRadius:'999px'}}/>
+))}
+</div>
+</div>
+</div>
+)
+}
+
+
+================================================================
+FILE: app/events/[id]/page.tsx
+================================================================
+
+import{getServerSupabase}from'@/app/lib/supabaseServer'
+import{notFound}from'next/navigation'
+import{isAdmin,getCurrentUser}from'@/app/lib/roles'
+import ReactionsComments from'@/app/components/ReactionsComments'
+import AttendanceBar from'@/app/components/AttendanceBar'
+import Image from'next/image'
+import{allZoneTimes}from'@/app/lib/timezones'
+
+export default async function EventPage(props:any){
+const supabase=await getServerSupabase()
+const{id}=await props.params
+const[{data:event},{data:images},{data:initialReactions},{data:initialComments},attendancesResult,admin,currentUser]=await Promise.all([
+supabase.from('events').select('*').eq('id',id).single(),
+supabase.from('event_images').select('*').eq('event_id',id).order('sort_order'),
+supabase.from('reactions').select('*').eq('event_id',id),
+supabase.from('comments').select('*').eq('event_id',id).order('created_at',{ascending:true}),
+supabase.from('attendances').select('*').eq('event_id',id),
+isAdmin(),
+getCurrentUser(),
+])
+if(attendancesResult.error)console.warn('[attendances]',attendancesResult.error.message)
+const initialAttendances=attendancesResult.data||[]
+if(!event)return notFound()
+const userEmail=currentUser?.email||''
+const userName=currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'User'
+const date=new Date(event.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+
+return(
+<div style={{padding:'20px 24px',maxWidth:'860px',margin:'0 auto'}}>
+
+<a href='/' style={{fontSize:'12px',color:'#9CA3AF',textDecoration:'none',display:'inline-flex',alignItems:'center',gap:'4px',marginBottom:'16px',fontWeight:500}}>
+<svg width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='currentColor' strokeWidth='1.8'><path d='M9 2L4 7l5 5' strokeLinecap='round' strokeLinejoin='round'/></svg>
+Back to calendar
+</a>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
+<div style={{padding:'24px 28px'}}>
+<div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'12px',flexWrap:'wrap' as const,marginBottom:'16px'}}>
+<div style={{flex:1,minWidth:0}}>
+<h1 style={{fontSize:'24px',fontWeight:700,color:'#1A1A1A',letterSpacing:'-.4px',margin:'0 0 10px',lineHeight:1.25}}>{event.title}</h1>
+<div style={{display:'flex',flexDirection:'column' as const,gap:'4px'}}>
+<div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13.5px',color:'#374151',fontWeight:500}}>
+<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' style={{flexShrink:0}}><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>
+<span>{date}</span>
+</div>
+{event.event_time&&event.timezone&&(
+<div style={{display:'flex',flexWrap:'wrap' as const,gap:'10px',alignItems:'center',paddingLeft:'21px'}}>
+{allZoneTimes(event.event_time,event.timezone,event.date).map(({tz,time,abbr})=>(
+<span key={tz} style={{display:'inline-flex',alignItems:'center',gap:'4px',fontSize:'12.5px'}}>
+<span style={{fontWeight:600,color:'#1A1A1A'}}>{time}</span>
+<span style={{fontSize:'10.5px',background:'#FFF3EB',color:'#FF6B00',padding:'1px 6px',borderRadius:'4px',fontWeight:600}}>{abbr}</span>
+<span style={{fontSize:'11.5px',color:'#9CA3AF'}}>{tz}</span>
+</span>
+))}
+</div>
+)}
+{event.location&&(
+<div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13px',color:'#6B7280'}}>
+<svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' style={{flexShrink:0}}><path d='M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z'/><circle cx='12' cy='10' r='3'/></svg>
+<span>{event.location}</span>
+</div>
+)}
+</div>
+</div>
+{admin&&(
+<div style={{display:'flex',gap:'6px',flexShrink:0}}>
+<a href={'/events/'+id+'/edit'} style={{background:'#F9FAFB',color:'#374151',border:'1px solid #E5E7EB',padding:'7px 14px',borderRadius:'8px',fontSize:'13px',textDecoration:'none',fontWeight:500}}>Edit</a>
+<a href={'/events/'+id+'/upload'} style={{background:'#FF6B00',color:'#fff',padding:'7px 14px',borderRadius:'8px',fontSize:'13px',textDecoration:'none',fontWeight:500}}>+ Upload</a>
+</div>
+)}
+</div>
+
+{event.description&&<p style={{fontSize:'14px',color:'#4B5563',lineHeight:1.8,margin:'0 0 16px',borderLeft:'3px solid #FFE4D1',paddingLeft:'14px'}}>{event.description}</p>}
+
+<div style={{display:'flex',flexWrap:'wrap' as const,gap:'6px'}}>
+{event.category&&<span style={{fontSize:'11px',background:'#FFF3EB',color:'#FF6B00',padding:'3px 10px',borderRadius:'999px',fontWeight:600,border:'1px solid #FFE4D1'}}>{event.category}</span>}
+{event.entity&&<span style={{fontSize:'11px',background:'#F3F4F6',color:'#374151',padding:'3px 10px',borderRadius:'999px',border:'1px solid #E5E7EB'}}>{event.entity}</span>}
+{event.office&&<span style={{fontSize:'11px',background:'#F3F4F6',color:'#374151',padding:'3px 10px',borderRadius:'999px',border:'1px solid #E5E7EB'}}>{event.office}</span>}
+{event.tags&&event.tags.map((tag:string)=><span key={tag} style={{fontSize:'11px',background:'#F9FAFB',color:'#9CA3AF',padding:'3px 10px',borderRadius:'999px',border:'1px solid #F3F4F6'}}>#{tag}</span>)}
+</div>
+</div>
+</div>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px',marginBottom:'16px'}}>
+<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}}>
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280'}}>Media — {images?.length||0} photos</div>
+<div style={{display:'flex',gap:'8px'}}>
+{event.drive_link&&<a href={event.drive_link} target='_blank' rel='noopener noreferrer' style={{fontSize:'12px',color:'#15803D',fontWeight:500,textDecoration:'none',background:'#F0FDF4',border:'1px solid #BBF7D0',padding:'4px 12px',borderRadius:'6px'}}>View full album</a>}
+{admin&&<a href={'/events/'+id+'/upload'} style={{fontSize:'12px',color:'#FF6B00',fontWeight:500,textDecoration:'none',background:'#FFF3EB',border:'1px solid #FFD4B8',padding:'4px 12px',borderRadius:'6px'}}>+ Add photos</a>}
+</div>
+</div>
+{images&&images.length>0?(
+<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:'10px'}}>
+{images.map((img:any)=>(
+<div key={img.id}>
+<div style={{position:'relative',aspectRatio:'4/3',borderRadius:'8px',overflow:'hidden',border:'1px solid #F3F4F6'}}>
+<Image src={img.image_url} alt={img.caption||''} fill sizes='(max-width:640px) 50vw, (max-width:1024px) 25vw, 200px' style={{objectFit:'cover'}}/>
+</div>
+{img.caption&&<div style={{fontSize:'11px',color:'#9CA3AF',marginTop:'4px',textAlign:'center' as const}}>{img.caption}</div>}
+</div>
+))}
+</div>
+):(
+<div className='empty-state' style={{background:'#F9FAFB',borderRadius:'8px',border:'1px dashed #E5E7EB'}}>
+<svg width='36' height='36' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>
+<span>No preview images yet</span>
+{admin&&<a href={'/events/'+id+'/upload'} style={{color:'#FF6B00',textDecoration:'none',fontWeight:500,fontSize:'12px'}}>+ Upload images</a>}
+</div>
+)}
+</div>
+
+<AttendanceBar
+eventId={id}
+eventTitle={event.title}
+initialAttendances={initialAttendances||[]}
+isAdmin={admin}
+userEmail={userEmail}
+userName={userName}
+/>
+
+<ReactionsComments eventId={id} initialReactions={initialReactions||[]} initialComments={initialComments||[]} userEmail={userEmail} userName={userName}/>
+
+</div>
+)
+}
+
+
+================================================================
+FILE: app/events/[id]/upload/actions.ts
+================================================================
+
+export {}
+
+================================================================
+FILE: app/events/[id]/upload/page.tsx
+================================================================
+
+'use client'
+import{useState,useCallback}from'react'
+import{supabase}from'@/app/lib/supabase'
+import{useRouter,useParams}from'next/navigation'
+
+type FileItem={file:File,preview:string,caption:string}
+
+export default function UploadPage(){
+const params=useParams()
+const id=params.id as string
+const router=useRouter()
+const[files,setFiles]=useState<FileItem[]>([])
+const[uploading,setUploading]=useState(false)
+const[progress,setProgress]=useState(0)
+const[dragOver,setDragOver]=useState(false)
+
+const handleFiles=(newFiles:FileList|null)=>{
+if(!newFiles)return
+const arr=Array.from(newFiles).filter((f:File)=>f.type.startsWith('image/'))
+setFiles((prev:FileItem[])=>[...prev,...arr.map((f:File)=>({file:f,preview:URL.createObjectURL(f),caption:''}))])
+}
+
+const handleDrop=useCallback((e:React.DragEvent)=>{
+e.preventDefault()
+setDragOver(false)
+handleFiles(e.dataTransfer.files)
+},[])
+
+const removeFile=(i:number)=>setFiles((prev:FileItem[])=>prev.filter((_,idx)=>idx!==i))
+const updateCaption=(i:number,val:string)=>setFiles((prev:FileItem[])=>prev.map((f,idx)=>idx===i?{...f,caption:val}:f))
+
+const uploadAll=async()=>{
+if(files.length===0||!id)return
+setUploading(true)
+setProgress(0)
+const rows:any[]=[]
+for(let i=0;i<files.length;i++){
+const{file,caption}=files[i]
+const ext=file.name.split('.').pop()
+const path=id+'/'+Date.now()+'-'+i+'.'+ext
+const{error}=await supabase.storage.from('event-images').upload(path,file,{upsert:true})
+if(!error){
+const{data}=supabase.storage.from('event-images').getPublicUrl(path)
+rows.push({event_id:id,image_url:data.publicUrl,caption,sort_order:i})
+}
+setProgress(Math.round(((i+1)/files.length)*100))
+}
+if(rows.length>0)await supabase.from('event_images').insert(rows)
+setUploading(false)
+router.push('/events/'+id)
+}
+
+return(
+<div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+<div style={{background:'#fff',borderBottom:'1px solid #e5e7eb',padding:'0 24px',height:'54px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+<div>
+<div style={{fontSize:'15px',fontWeight:600,color:'#111827'}}>Upload Images</div>
+<div style={{fontSize:'11px',color:'#9ca3af'}}>{files.length} images selected</div>
+</div>
+<div style={{display:'flex',gap:'8px'}}>
+{!uploading&&<a href={'/events/'+id} style={{background:'#f3f4f6',color:'#374151',padding:'7px 14px',borderRadius:'6px',fontSize:'13px',textDecoration:'none'}}>Cancel</a>}
+<button onClick={uploadAll} disabled={uploading||files.length===0} style={{background:files.length===0?'#d1d5db':'#ff6b00',color:'#fff',border:'none',padding:'7px 16px',borderRadius:'6px',fontSize:'13px',fontWeight:500,cursor:files.length===0?'not-allowed':'pointer'}}>
+{uploading?'Uploading '+progress+'%':'Upload '+files.length+' images'}
+</button>
+</div>
+</div>
+<div style={{flex:1,overflow:'auto',padding:'24px'}}>
+<div style={{maxWidth:'800px'}}>
+<div
+onDrop={handleDrop}
+onDragOver={(e:React.DragEvent)=>{e.preventDefault();setDragOver(true)}}
+onDragLeave={()=>setDragOver(false)}
+style={{border:'2px dashed '+(dragOver?'#ff6b00':'#e5e7eb'),borderRadius:'10px',padding:'40px',textAlign:'center',marginBottom:'24px',background:dragOver?'#fff8f3':'#fafafa',cursor:'pointer'}}
+onClick={()=>(document.getElementById('fileInput') as HTMLInputElement)?.click()}
+>
+<div style={{fontSize:'32px',marginBottom:'8px'}}>📸</div>
+<div style={{fontSize:'15px',fontWeight:500,color:'#374151',marginBottom:'4px'}}>Drag and drop images here</div>
+<div style={{fontSize:'13px',color:'#9ca3af',marginBottom:'16px'}}>or click to select files</div>
+<div style={{fontSize:'12px',color:'#ff6b00',fontWeight:500}}>Select multiple images at once</div>
+<input id='fileInput' type='file' multiple accept='image/*' style={{display:'none'}} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>handleFiles(e.target.files)}/>
+</div>
+{uploading&&(
+<div style={{marginBottom:'24px'}}>
+<div style={{display:'flex',justifyContent:'space-between',fontSize:'12px',color:'#6b7280',marginBottom:'6px'}}>
+<span>Uploading...</span><span>{progress}%</span>
+</div>
+<div style={{background:'#f3f4f6',borderRadius:'99px',height:'8px',overflow:'hidden'}}>
+<div style={{background:'#ff6b00',height:'100%',width:progress+'%',borderRadius:'99px',transition:'width 0.3s'}}/>
+</div>
+</div>
+)}
+{files.length>0&&(
+<div>
+<div style={{fontSize:'13px',fontWeight:600,color:'#374151',marginBottom:'12px'}}>{files.length} images ready</div>
+<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:'12px'}}>
+{files.map((f:FileItem,i:number)=>(
+<div key={i} style={{position:'relative'}}>
+<img src={f.preview} alt='' style={{width:'100%',aspectRatio:'4/3',objectFit:'cover',borderRadius:'8px',display:'block'}}/>
+<button onClick={()=>removeFile(i)} style={{position:'absolute',top:'4px',right:'4px',background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',borderRadius:'50%',width:'22px',height:'22px',cursor:'pointer',fontSize:'12px'}}>x</button>
+<input value={f.caption} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>updateCaption(i,e.target.value)} placeholder='Caption...' style={{width:'100%',border:'1px solid #e5e7eb',borderRadius:'4px',padding:'4px 6px',fontSize:'11px',marginTop:'4px',outline:'none'}}/>
+</div>
+))}
+</div>
+</div>
+)}
+</div>
+</div>
+</div>
+)
+}
+
+================================================================
+FILE: app/events/loading.tsx
+================================================================
+
+export default function Loading(){
+return(
+<div style={{padding:'20px 24px',maxWidth:'1200px',margin:'0 auto'}}>
+
+{/* Filter bar skeleton */}
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'10px 14px',marginBottom:'16px',display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap' as const}}>
+{[160,80,100,90,90].map((w,i)=>(
+<div key={i} style={{height:'30px',width:w,background:'#EBEBEB',borderRadius:'6px',animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:i*0.06+'s'}}/>
+))}
+</div>
+
+{/* Count line */}
+<div style={{height:'11px',background:'#EBEBEB',borderRadius:'3px',width:'140px',marginBottom:'14px',animation:'sk-pulse 1.4s ease-in-out infinite'}}/>
+
+{/* Event rows */}
+{Array.from({length:8}).map((_,i)=>(
+<div key={i} style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'14px 16px',marginBottom:'8px',display:'flex',alignItems:'center',gap:'12px',animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:i*0.05+'s'}}>
+<div style={{width:'44px',height:'44px',borderRadius:'8px',background:'#EBEBEB',flexShrink:0}}/>
+<div style={{flex:1,minWidth:0}}>
+<div style={{height:'13px',background:'#EBEBEB',borderRadius:'3px',width:'55%',marginBottom:'7px'}}/>
+<div style={{height:'10px',background:'#EBEBEB',borderRadius:'3px',width:'35%'}}/>
+</div>
+<div style={{display:'flex',gap:'6px'}}>
+<div style={{height:'20px',width:'60px',background:'#EBEBEB',borderRadius:'999px'}}/>
+<div style={{height:'20px',width:'50px',background:'#EBEBEB',borderRadius:'999px'}}/>
+</div>
+</div>
+))}
+
+{/* Pagination skeleton */}
+<div style={{display:'flex',justifyContent:'center',gap:'6px',marginTop:'16px'}}>
+{Array.from({length:5}).map((_,i)=>(
+<div key={i} style={{width:'32px',height:'32px',background:'#EBEBEB',borderRadius:'6px',animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:i*0.05+'s'}}/>
+))}
+</div>
+
+</div>
+)
+}
+
+
+================================================================
+FILE: app/events/page.tsx
+================================================================
+
+import{getServerSupabase}from'@/app/lib/supabaseServer'
+import{isAdmin}from'@/app/lib/roles'
+import{Suspense}from'react'
+import EventsFilterBar from'@/app/components/EventsFilterBar'
+
+const PAGE_SIZE=10
+// Only fields needed by the events list card
+const LIST_FIELDS='id,title,date,location,category,entity,office,tags,description,drive_link'
+
+export default async function EventsPage({searchParams}:any){
+const supabase=await getServerSupabase()
+const sp=await searchParams
+const page=Math.max(1,parseInt(sp?.page||'1'))
+const search=sp?.search||''
+const category=sp?.category||''
+const entity=sp?.entity||''
+const sort=sp?.sort||'newest'
+const admin=await isAdmin()
+
+// Build both queries before awaiting — run count + data in parallel
+let countQuery=supabase.from('events').select('id',{count:'exact',head:true})
+if(search)countQuery=countQuery.ilike('title','%'+search+'%')
+if(category)countQuery=countQuery.eq('category',category)
+if(entity)countQuery=countQuery.eq('entity',entity)
+
+let dataQuery=supabase.from('events').select(LIST_FIELDS)
+if(search)dataQuery=dataQuery.ilike('title','%'+search+'%')
+if(category)dataQuery=dataQuery.eq('category',category)
+if(entity)dataQuery=dataQuery.eq('entity',entity)
+if(sort==='oldest')dataQuery=dataQuery.order('date',{ascending:true})
+else if(sort==='az')dataQuery=dataQuery.order('title',{ascending:true})
+else if(sort==='za')dataQuery=dataQuery.order('title',{ascending:false})
+else dataQuery=dataQuery.order('date',{ascending:false})
+
+// Count and a preliminary first-page range run simultaneously;
+// we adjust safePage after count resolves
+const[{count},{data:allEvents}]=await Promise.all([
+countQuery,
+dataQuery.range((Math.max(1,page)-1)*PAGE_SIZE,Math.max(1,page)*PAGE_SIZE-1)
+])
+const total=count||0
+const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE))
+const safePage=Math.min(Math.max(1,page),totalPages)
+// If page was out of range, the fetched slice is still correct for page=1
+const events=allEvents
+
+const buildUrl=(params:Record<string,string>)=>{
+const base:Record<string,string>={}
+if(search)base.search=search
+if(category)base.category=category
+if(entity)base.entity=entity
+if(sort&&sort!=='newest')base.sort=sort
+if(safePage>1)base.page=String(safePage)
+Object.assign(base,params)
+Object.keys(base).forEach(k=>{if(!base[k])delete base[k]})
+const qs=Object.entries(base).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&')
+return qs?'/events?'+qs:'/events'
+}
+
+// Pagination window — show up to 7 page buttons
+const pageNums:number[]=[]
+const delta=3
+for(let p=Math.max(1,safePage-delta);p<=Math.min(totalPages,safePage+delta);p++)pageNums.push(p)
+
+const from=(safePage-1)*PAGE_SIZE+1
+const to=Math.min(safePage*PAGE_SIZE,total)
+
+return(
+<div>
+{/* Toolbar */}
+<div style={{background:'#fff',borderBottom:'1px solid #e5e7eb',padding:'0 24px',height:'54px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,gap:'12px'}}>
+<div>
+<div style={{fontSize:'15px',fontWeight:600,color:'#111827'}}>All Events</div>
+<div style={{fontSize:'11px',color:'#9ca3af'}}>{total>0?`Showing ${from}–${to} of ${total}`:'No events found'}</div>
+</div>
+{admin&&<a href='/admin/events/new' style={{background:'#ff6b00',color:'#fff',padding:'7px 14px',borderRadius:'6px',fontSize:'13px',textDecoration:'none',fontWeight:500,whiteSpace:'nowrap' as const}}>+ New event</a>}
+</div>
+
+{/* Filters */}
+<Suspense fallback={<div style={{height:'42px',background:'#F3F4F6',borderBottom:'1px solid #E5E7EB'}}/>}>
+<EventsFilterBar/>
+</Suspense>
+
+<div style={{padding:'20px 24px',maxWidth:'860px'}}>
+
+{/* Event list */}
+<div style={{display:'flex',flexDirection:'column' as const,gap:'8px',marginBottom:'24px'}}>
+{events&&events.length>0?events.map((event:any)=>(
+<a key={event.id} href={'/events/'+event.id} style={{display:'block',textDecoration:'none'}}>
+<div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px'}}>
+<div style={{flex:1,minWidth:0}}>
+<div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'5px',flexWrap:'wrap' as const}}>
+<div style={{fontSize:'14px',fontWeight:600,color:'#111827'}}>{event.title}</div>
+{event.drive_link&&<span style={{fontSize:'10px',background:'#f0fdf4',color:'#15803d',border:'1px solid #bbf7d0',padding:'1px 7px',borderRadius:'10px',flexShrink:0}}>Drive</span>}
+</div>
+<div style={{display:'flex',gap:'10px',fontSize:'12px',color:'#6b7280',flexWrap:'wrap' as const,marginBottom:'5px'}}>
+<span>📅 {new Date(event.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span>
+{event.location&&<span>📍 {event.location}</span>}
+</div>
+<div style={{display:'flex',gap:'5px',flexWrap:'wrap' as const}}>
+{event.category&&<span style={{fontSize:'10px',background:'#FFE4D1',color:'#E65C00',padding:'1px 8px',borderRadius:'999px',fontWeight:500}}>{event.category}</span>}
+{event.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6b7280',padding:'1px 8px',borderRadius:'999px'}}>{event.entity}</span>}
+{event.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6b7280',padding:'1px 8px',borderRadius:'999px'}}>{event.office}</span>}
+{event.tags&&event.tags.slice(0,3).map((tag:string)=>(<span key={tag} style={{fontSize:'10px',padding:'1px 8px',background:'#f3f4f6',color:'#6b7280',borderRadius:'10px'}}>#{tag}</span>))}
+</div>
+</div>
+<div style={{color:'#9ca3af',fontSize:'18px',flexShrink:0}}>›</div>
+</div>
+</a>
+)):(
+<div style={{padding:'60px',textAlign:'center' as const,color:'#9ca3af',fontSize:'14px',background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px'}}>
+No events found
+{admin&&!search&&!category&&!entity&&<><br/><a href='/admin/events/new' style={{color:'#ff6b00',textDecoration:'none',fontWeight:500,marginTop:'8px',display:'inline-block'}}>+ Create the first event</a></>}
+</div>
+)}
+</div>
+
+{/* Pagination */}
+{totalPages>1&&(
+<div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'4px',flexWrap:'wrap' as const}}>
+{safePage>1&&(
+<a href={buildUrl({page:String(safePage-1)})} style={{width:'32px',height:'32px',border:'1px solid #E5E7EB',borderRadius:'6px',background:'#fff',fontSize:'14px',color:'#374151',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>‹</a>
+)}
+{pageNums[0]>1&&<span style={{padding:'0 4px',color:'#9CA3AF',fontSize:'13px'}}>1 …</span>}
+{pageNums.map(p=>(
+<a key={p} href={buildUrl({page:String(p)})} style={{width:'32px',height:'32px',border:'1px solid',borderColor:p===safePage?'#FF6B00':'#E5E7EB',borderRadius:'6px',background:p===safePage?'#FF6B00':'#fff',fontSize:'13px',fontWeight:p===safePage?600:400,color:p===safePage?'#fff':'#374151',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
+{p}
+</a>
+))}
+{pageNums[pageNums.length-1]<totalPages&&<span style={{padding:'0 4px',color:'#9CA3AF',fontSize:'13px'}}>… {totalPages}</span>}
+{safePage<totalPages&&(
+<a href={buildUrl({page:String(safePage+1)})} style={{width:'32px',height:'32px',border:'1px solid #E5E7EB',borderRadius:'6px',background:'#fff',fontSize:'14px',color:'#374151',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>›</a>
+)}
+</div>
+)}
+
+</div>
+</div>
+)
+}
+
+
+================================================================
+FILE: app/globals.css
+================================================================
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-noto-sans), sans-serif;
+  background: #f9f8f5;
+  color: #111827;
+}
+
+a:hover {
+  background: #fff3eb;
+  color: #ff6b00 !important;
+}
+
+/* ── Responsive utilities ───────────────────────────── */
+@media (max-width: 767px) {
+  .desktop-only { display: none !important; }
+}
+@media (min-width: 768px) {
+  .mobile-only { display: none !important; }
+}
+
+/* Calendar: hide full grid on mobile, show list; opposite on desktop */
+@media (max-width: 639px) {
+  .cal-desktop { display: none !important; }
+  .cal-mobile   { display: block !important; }
+  /* Compact day cells */
+  .cal-day-cell { min-height: 44px !important; padding: 4px !important; }
+}
+@media (min-width: 640px) {
+  .cal-mobile { display: none !important; }
+}
+
+/* Recent-events grid: 3-col → 2-col → 1-col */
+@media (max-width: 639px) {
+  .events-grid { grid-template-columns: 1fr !important; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .events-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* FilterBar: scrollable on mobile */
+@media (max-width: 767px) {
+  .filter-bar {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap !important;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+}
+
+/* Padding reduction on small screens */
+@media (max-width: 639px) {
+  .page-padding { padding: 14px 16px !important; }
+}
+
+/* Event calendar pills — override global a:hover so brand color is preserved */
+.event-pill-link:hover {
+  background: inherit !important;
+  color: #ffffff !important;
+  opacity: 0.88;
+}
+
+/* ── Event card hover lift ───────────────────────────── */
+a.event-card {
+  display: block;
+  text-decoration: none;
+  border-radius: 10px;
+  outline: none;
+}
+/* Neutralise the global a:hover orange tint on cards */
+a.event-card:hover {
+  background: transparent !important;
+  color: inherit !important;
+}
+.event-card-inner {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  will-change: transform;
+}
+a.event-card:hover .event-card-inner {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0,0,0,.09);
+  border-color: #d1d5db !important;
+}
+
+/* ── Calendar cell overflow pill ────────────────────── */
+.cal-overflow-pill {
+  font-size: 10px;
+  color: #9CA3AF;
+  font-weight: 500;
+  padding: 1px 5px;
+  margin-top: 1px;
+  border-radius: 4px;
+  background: #F3F4F6;
+  display: inline-block;
+  line-height: 1.6;
+  cursor: default;
+  user-select: none;
+}
+
+/* ── Empty states ────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: #9CA3AF;
+  font-size: 13px;
+  text-align: center;
+}
+.empty-state svg {
+  opacity: .45;
+}
+
+/* ── Shared animations ──────────────────────────────── */
+@keyframes sk-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+@keyframes att-spin  { to { transform: rotate(360deg) } }
+@keyframes toast-in  { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+
+================================================================
+FILE: app/images/loading.tsx
+================================================================
+
+export default function Loading(){
+return(
+<div style={{padding:'20px 24px'}}>
+<div style={{marginBottom:'20px'}}>
+<div style={{height:'21px',background:'#EBEBEB',borderRadius:'4px',width:'130px',marginBottom:'6px',animation:'sk-pulse 1.4s ease-in-out infinite'}}/>
+<div style={{height:'11px',background:'#EBEBEB',borderRadius:'3px',width:'160px',animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:'.1s'}}/>
+</div>
+<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))',gap:'12px'}}>
+{Array.from({length:12}).map((_,i)=>(
+<div key={i} style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',overflow:'hidden',animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:i*0.04+'s'}}>
+<div style={{aspectRatio:'4/3',background:'#EBEBEB'}}/>
+<div style={{padding:'8px 10px'}}>
+<div style={{height:'11px',background:'#EBEBEB',borderRadius:'3px',width:'75%',marginBottom:'5px'}}/>
+<div style={{height:'10px',background:'#EBEBEB',borderRadius:'3px',width:'50%'}}/>
+</div>
+</div>
+))}
+</div>
+</div>
+)
+}
+
+
+================================================================
+FILE: app/images/page.tsx
+================================================================
+
+import{getServerSupabase}from'@/app/lib/supabaseServer'
+import Image from'next/image'
+
+export default async function ImagesPage(){
+const supabase=await getServerSupabase()
+const{data:images}=await supabase
+.from('event_images')
+.select('*,events(title,date)')
+.order('created_at',{ascending:false})
+
+return(
+<div style={{padding:'20px 24px'}}>
+<div style={{marginBottom:'20px'}}>
+<h1 style={{fontSize:'21px',fontWeight:700,color:'#1A1A1A',letterSpacing:'-.3px',margin:0}}>Image library</h1>
+<p style={{fontSize:'12.5px',color:'#6B7280',marginTop:'3px',marginBottom:0}}>{images?.length||0} photos across all events</p>
+</div>
+<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))',gap:'12px'}}>
+{images?.map((img:any)=>(
+<a key={img.id} href={'/events/'+(img.events?.id||'')} style={{textDecoration:'none'}}>
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',overflow:'hidden'}}>
+<div style={{position:'relative',aspectRatio:'4/3'}}>
+<Image src={img.image_url} alt={img.caption||''} fill sizes='(max-width:640px) 50vw, (max-width:1024px) 25vw, 200px' style={{objectFit:'cover'}}/>
+</div>
+<div style={{padding:'8px 10px'}}>
+<div style={{fontSize:'11px',fontWeight:500,color:'#1A1A1A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{img.events?.title||'Event'}</div>
+{img.caption&&<div style={{fontSize:'10.5px',color:'#6B7280',marginTop:'2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{img.caption}</div>}
+</div>
+</div>
+</a>
+))}
+{(!images||images.length===0)&&(
+<div className='empty-state' style={{gridColumn:'1/-1'}}>
+<svg width='44' height='44' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>
+<span>No images yet</span>
+<span style={{fontSize:'12px',color:'#C4C9D4'}}>Upload photos to events to see them here</span>
+</div>
+)}
+</div>
+</div>
+)
+}
+
+================================================================
+FILE: app/layout.tsx
+================================================================
+
+import type{Metadata}from'next'
+import'./globals.css'
+import{createServerClient}from'@supabase/ssr'
+import{cookies}from'next/headers'
+import{Noto_Sans}from'next/font/google'
+import Header from'@/app/components/Header'
+import{isRealAdmin}from'@/app/lib/roles'
+
+const notoSans=Noto_Sans({subsets:['latin'],weight:['300','400','500','600','700'],variable:'--font-noto-sans',display:'swap'})
+
+export const metadata:Metadata={
+title:'Gradion Wall',
+description:'The company activity hub',
+}
+
+async function getUser(){
+try{
+const cookieStore=await cookies()
+const supabase=createServerClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+{cookies:{getAll(){return cookieStore.getAll()},setAll(c:any){c.forEach(({name,value,options}:any)=>cookieStore.set(name,value,options))}}}
+)
+const{data:{user}}=await supabase.auth.getUser()
+return user
+}catch{return null}
+}
+
+export default async function RootLayout({children}:{children:React.ReactNode}){
+const[user,realAdmin,cookieStore]=await Promise.all([getUser(),isRealAdmin(),cookies()])
+const name=user?.user_metadata?.full_name||user?.email||'User'
+const email=user?.email||''
+const initials=name.split(' ').map((n:string)=>n[0]).join('').toUpperCase().slice(0,2)
+const isPreviewing=cookieStore.get('previewRole')?.value==='member'
+
+return(
+<html lang='en' className={notoSans.variable}>
+<body style={{margin:0,padding:0,background:'#FAFAFA'}}>
+
+<Header initials={initials} name={name} email={email} isRealAdmin={realAdmin} isPreviewing={isPreviewing}/>
+
+<main style={{maxWidth:'1200px',margin:'0 auto'}}>
+{children}
+</main>
+
+</body>
+</html>
+)
+}
+
+
+================================================================
+FILE: app/lib/account-actions.ts
+================================================================
+
+'use server'
+import{cookies}from'next/headers'
+import{createServerClient}from'@supabase/ssr'
+import{redirect}from'next/navigation'
+import{revalidatePath}from'next/cache'
+
+export async function signOut(){
+const cookieStore=await cookies()
+const supabase=createServerClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+{cookies:{getAll(){return cookieStore.getAll()},setAll(c:any){c.forEach(({name,value,options}:any)=>cookieStore.set(name,value,options))}}}
+)
+await supabase.auth.signOut()
+redirect('/login')
+}
+
+export async function setPreviewRole(mode:'member'|'off'){
+const cookieStore=await cookies()
+if(mode==='member'){
+cookieStore.set('previewRole','member',{path:'/',maxAge:60*60*8})
+}else{
+cookieStore.delete('previewRole')
+}
+revalidatePath('/',  'layout')
+redirect('/')
+}
+
+
+================================================================
+FILE: app/lib/roles.ts
+================================================================
+
+import{createServerClient}from'@supabase/ssr'
+import{cookies}from'next/headers'
+
+const ADMIN_EMAILS=['uyen.nguyen@gradion.com','lars@gradion.com','rich@gradion.com','tuyen.tong@gradion.com','gee.vo@gradion.com','nhu.truong@gradion.com']
+
+export async function getCurrentUser(){
+const cookieStore=await cookies()
+const supabase=createServerClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+{cookies:{getAll(){return cookieStore.getAll()},setAll(c){c.forEach(({name,value,options})=>cookieStore.set(name,value,options))}}}
+)
+const{data:{user}}=await supabase.auth.getUser()
+return user
+}
+
+export async function isAdmin(){
+const user=await getCurrentUser()
+if(!user?.email)return false
+if(!ADMIN_EMAILS.includes(user.email))return false
+// Allow admins to preview the app as a regular member
+const cookieStore=await cookies()
+if(cookieStore.get('previewRole')?.value==='member')return false
+return true
+}
+
+export async function isRealAdmin(){
+const user=await getCurrentUser()
+if(!user?.email)return false
+return ADMIN_EMAILS.includes(user.email)
+}
+
+export async function requireAdmin(){
+const admin=await isAdmin()
+if(!admin)throw new Error('Unauthorized')
+}
+
+================================================================
+FILE: app/lib/supabase.ts
+================================================================
+
+import{createBrowserClient}from'@supabase/ssr'
+
+export const supabase=createBrowserClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+================================================================
+FILE: app/lib/supabaseServer.ts
+================================================================
+
+import{createServerClient}from'@supabase/ssr'
+import{cookies}from'next/headers'
+
+export async function getServerSupabase(){
+const cookieStore=await cookies()
+return createServerClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+{cookies:{
+getAll(){return cookieStore.getAll()},
+setAll(c){c.forEach(({name,value,options})=>{try{cookieStore.set(name,value,options)}catch{}})}
+}}
+)
+}
+
+
+================================================================
+FILE: app/lib/timezones.ts
+================================================================
+
+export const TIMEZONE_KEYS = ['Vietnam / Thailand', 'Germany', 'Egypt'] as const
+export type TzKey = typeof TIMEZONE_KEYS[number]
+
+function lastSundayOf(year: number, month: number): Date {
+  const d = new Date(Date.UTC(year, month + 1, 0))
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay())
+  return d
+}
+
+// Germany: CET (UTC+1) in winter, CEST (UTC+2) in summer.
+// Clocks spring forward last Sunday of March, fall back last Sunday of October.
+function germanyOffset(dateStr: string): { offset: number; abbr: string } {
+  const d = new Date(dateStr + 'T12:00:00Z')
+  const y = d.getUTCFullYear()
+  const isSummer = d >= lastSundayOf(y, 2) && d < lastSundayOf(y, 9)
+  return isSummer ? { offset: 2, abbr: 'CEST' } : { offset: 1, abbr: 'CET' }
+}
+
+export function getOffset(tz: string, dateStr: string): { offset: number; abbr: string } {
+  if (tz === 'Vietnam / Thailand') return { offset: 7, abbr: 'ICT' }
+  if (tz === 'Egypt') return { offset: 2, abbr: 'EET' }
+  if (tz === 'Germany') return germanyOffset(dateStr)
+  return { offset: 0, abbr: 'UTC' }
+}
+
+export function convertTime(timeStr: string, fromOffset: number, toOffset: number): string {
+  const [h, m] = timeStr.split(':').map(Number)
+  const utcMins = h * 60 + m - fromOffset * 60
+  const local = ((utcMins + toOffset * 60) % 1440 + 1440) % 1440
+  return `${String(Math.floor(local / 60)).padStart(2, '0')}:${String(local % 60).padStart(2, '0')}`
+}
+
+export function allZoneTimes(timeStr: string, storedTz: string, dateStr: string) {
+  const { offset: fromOffset } = getOffset(storedTz, dateStr)
+  return TIMEZONE_KEYS.map(tz => {
+    const { offset, abbr } = getOffset(tz, dateStr)
+    return { tz, time: convertTime(timeStr, fromOffset, offset), abbr }
+  })
+}
+
+
+================================================================
+FILE: app/loading.tsx
+================================================================
+
+const S=(w:string,h:string,r='4px',extra?:React.CSSProperties)=>(
+<div style={{width:w,height:h,background:'#EBEBEB',borderRadius:r,...extra}}/>
+)
+
+export default function Loading(){
+const cells=Array.from({length:35})
+
+return(
+<div style={{padding:'16px 24px',maxWidth:'1200px',margin:'0 auto'}}>
+
+{/* FilterBar skeleton */}
+<div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'16px',flexWrap:'wrap' as const}}>
+{[90,70,80,100,70].map((w,i)=>(
+<div key={i} style={{height:'30px',width:w,background:'#EBEBEB',borderRadius:'6px',animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:i*0.06+'s'}}/>
+))}
+<div style={{flex:1}}/>
+{S('120px','30px','6px',{animation:'sk-pulse 1.4s ease-in-out infinite',marginLeft:'auto'})}
+</div>
+
+{/* Calendar block */}
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'20px'}}>
+
+{/* Nav bar */}
+<div style={{padding:'12px 16px',borderBottom:'1px solid #F3F4F6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+<div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+{S('28px','28px','6px',{animation:'sk-pulse 1.4s ease-in-out infinite'})}
+{S('28px','28px','6px',{animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:'.07s'})}
+{S('120px','18px','4px',{animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:'.14s'})}
+</div>
+{S('60px','12px','4px',{animation:'sk-pulse 1.4s ease-in-out infinite'})}
+</div>
+
+{/* Day-of-week headers */}
+<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid #F3F4F6'}}>
+{['M','T','W','T','F','S','S'].map((d,i)=>(
+<div key={i} style={{padding:'8px',textAlign:'center' as const}}>
+<div style={{height:'10px',background:'#EBEBEB',borderRadius:'3px',width:'50%',margin:'0 auto',animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:i*0.05+'s'}}/>
+</div>
+))}
+</div>
+
+{/* Day cells */}
+<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+{cells.map((_,i)=>{
+const col=i%7
+const row=Math.floor(i/7)
+const hasEvent1=((row*7+col)%5===0)
+const hasEvent2=((row*7+col)%9===0)
+return(
+<div key={i} style={{
+minHeight:'72px',
+borderRight:col<6?'1px solid #F3F4F6':'none',
+borderBottom:row<4?'1px solid #F3F4F6':'none',
+padding:'5px',
+animation:'sk-pulse 1.4s ease-in-out infinite',
+animationDelay:(col*0.05)+'s',
+}}>
+<div style={{height:'10px',background:'#EBEBEB',borderRadius:'3px',width:'18px',marginBottom:'5px'}}/>
+{hasEvent1&&<div style={{height:'13px',background:'#EBEBEB',borderRadius:'4px',width:'90%',marginBottom:'2px'}}/>}
+{hasEvent2&&<div style={{height:'13px',background:'#EBEBEB',borderRadius:'4px',width:'75%'}}/>}
+</div>
+)
+})}
+</div>
+</div>
+
+{/* Recent events strip */}
+<div style={{marginTop:'4px'}}>
+<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
+{S('110px','13px','3px',{animation:'sk-pulse 1.4s ease-in-out infinite'})}
+{S('60px','11px','3px',{animation:'sk-pulse 1.4s ease-in-out infinite'})}
+</div>
+<div className='events-grid' style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'10px'}}>
+{Array.from({length:3}).map((_,i)=>(
+<div key={i} style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'14px',animation:'sk-pulse 1.4s ease-in-out infinite',animationDelay:i*0.08+'s'}}>
+{S('100%','10px','3px',{marginBottom:'8px'})}
+{S('60%','10px','3px',{marginBottom:'6px'})}
+{S('45%','10px','3px')}
+</div>
+))}
+</div>
+</div>
+
+</div>
+)
+}
+
+
+================================================================
+FILE: app/login/page.tsx
+================================================================
+
+'use client'
+import{useState}from'react'
+import{supabase}from'@/app/lib/supabase'
+
+export default function LoginPage(){
+const[loading,setLoading]=useState(false)
+const[error,setError]=useState('')
+
+const handleLogin=async()=>{
+setLoading(true)
+setError('')
+const redirectTo=window.location.origin+'/auth/callback'
+const{error}=await supabase.auth.signInWithOAuth({
+provider:'google',
+options:{
+redirectTo,
+queryParams:{hd:'gradion.com'}
+}
+})
+if(error){setError(error.message);setLoading(false)}
+}
+
+return(
+<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#FAFAFA'}}>
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'40px',width:'100%',maxWidth:'360px',textAlign:'center'}}>
+<div style={{marginBottom:'20px'}}>
+<img src='https://jkefwcttcszndeebgkch.supabase.co/storage/v1/object/public/assets/gradion-logo.png' alt='Gradion' style={{height:'36px',width:'auto',display:'block',margin:'0 auto'}}/>
+</div>
+<div style={{width:'1px',height:'16px',background:'#E5E7EB',margin:'0 auto 16px'}}/>
+<div style={{fontSize:'16px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px'}}>Gradion Wall</div>
+<div style={{fontSize:'12px',color:'#6B7280',marginBottom:'28px'}}>The company activity hub.</div>
+{error&&(
+<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:'8px',padding:'10px',marginBottom:'16px',fontSize:'12px',color:'#dc2626'}}>{error}</div>
+)}
+<button onClick={handleLogin} disabled={loading} style={{width:'100%',background:loading?'#d1d5db':'#FF6B00',color:'#fff',border:'none',borderRadius:'8px',padding:'11px',fontSize:'14px',fontWeight:500,cursor:loading?'not-allowed':'pointer',fontFamily:'Noto Sans,sans-serif',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px'}}>
+<svg width='18' height='18' viewBox='0 0 48 48'><path fill='#FFC107' d='M43.6 20.5H42V20H24v8h11.3c-1.7 4.7-6.2 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z'/><path fill='#FF3D00' d='M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4c-7.4 0-13.8 4-17.7 10.7z'/><path fill='#4CAF50' d='M24 44c5.2 0 9.9-2 13.5-5.2l-6.2-5.2C29.1 35.2 26.7 36 24 36c-5.1 0-9.5-3.3-11.2-8l-6.5 5C10 40 16.5 44 24 44z'/><path fill='#1976D2' d='M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.6l6.2 5.2C41.9 35.3 44 30 44 24c0-1.2-.1-2.3-.4-3.5z'/></svg>
+{loading?'Redirecting...':'Sign in with Google'}
+</button>
+<div style={{fontSize:'11px',color:'#9CA3AF',marginTop:'14px'}}>For @gradion.com members only.</div>
+</div>
+</div>
+)
+}
+
+================================================================
+FILE: app/page.tsx
+================================================================
+
+import{getServerSupabase}from'@/app/lib/supabaseServer'
+import{Suspense}from'react'
+import FilterBar from'@/app/components/FilterBar'
+import EventPill from'@/app/components/EventPill'
+
+export default async function CalendarPage({searchParams}:any){
+const supabase=await getServerSupabase()
+const sp=await searchParams
+const today=new Date()
+const year=sp?.year?parseInt(sp.year):today.getFullYear()
+const month=sp?.month?parseInt(sp.month):today.getMonth()+1
+const search=sp?.search||''
+const category=sp?.category||''
+const entity=sp?.entity||''
+const office=sp?.office||''
+
+const pad=(n:number)=>String(n).padStart(2,'0')
+const lastDayNum=new Date(year,month,0).getDate()
+const firstDateStr=`${year}-${pad(month)}-01`
+const monthName=new Date(year,month-1,1).toLocaleString('default',{month:'long'})
+
+// Only fetch fields needed by the calendar pill and mobile list
+// event_time + timezone omitted until ALTER TABLE migration has been run
+const CALENDAR_FIELDS='id,title,date,location,category,entity,office,description'
+const RECENT_FIELDS='id,title,date,description,category,entity,office'
+
+const nextMonthFirstStr=month===12?`${year+1}-01-01`:`${year}-${pad(month+1)}-01`
+
+let calQuery=supabase.from('events').select(CALENDAR_FIELDS)
+.gte('date',firstDateStr)
+.lt('date',nextMonthFirstStr)
+if(search)calQuery=calQuery.ilike('title','%'+search+'%')
+if(category)calQuery=calQuery.eq('category',category)
+if(entity)calQuery=calQuery.eq('entity',entity)
+if(office)calQuery=calQuery.eq('office',office)
+
+// Run calendar events + recent events in parallel
+const[{data:events},{data:recentEvents}]=await Promise.all([
+calQuery,
+supabase.from('events').select(RECENT_FIELDS).order('date',{ascending:false}).limit(6)
+])
+
+// Preview images depend on event IDs — run immediately after events resolve
+const eventIds=events?.map((e:any)=>e.id)||[]
+const{data:previewImages}=eventIds.length>0
+?await supabase.from('event_images').select('event_id,image_url').in('event_id',eventIds).order('sort_order').limit(eventIds.length)
+:{data:[]}
+const firstImageByEvent:Record<string,string>={}
+previewImages?.forEach((img:any)=>{if(!firstImageByEvent[img.event_id])firstImageByEvent[img.event_id]=img.image_url})
+
+const eventsByDate:Record<string,any[]>={}
+events?.forEach((e:any)=>{
+const dateKey=(e.date||'').slice(0,10)
+if(!eventsByDate[dateKey])eventsByDate[dateKey]=[]
+eventsByDate[dateKey].push(e)
+})
+
+const startWday=new Date(year,month-1,1).getDay()
+const adjustedStart=startWday===0?6:startWday-1
+const totalDays=lastDayNum
+const todayStr=`${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`
+
+const days:any[]=[]
+for(let i=0;i<adjustedStart;i++)days.push({day:null,date:null})
+for(let d=1;d<=totalDays;d++){
+const dateStr=year+'-'+String(month).padStart(2,'0')+'-'+String(d).padStart(2,'0')
+days.push({day:d,date:dateStr})
+}
+while(days.length%7!==0)days.push({day:null,date:null})
+
+const prevMonth=month===1?12:month-1
+const prevYear=month===1?year-1:year
+const nextMonth=month===12?1:month+1
+const nextYear=month===12?year+1:year
+
+const buildUrl=(params:Record<string,string>)=>{
+const base:Record<string,string>={}
+if(year!==today.getFullYear()||month!==today.getMonth()+1){base.year=String(year);base.month=String(month)}
+if(search)base.search=search
+if(category)base.category=category
+if(entity)base.entity=entity
+if(office)base.office=office
+Object.assign(base,params)
+Object.keys(base).forEach(k=>{if(!base[k])delete base[k]})
+const qs=Object.entries(base).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&')
+return qs?'/?'+qs:'/'
+}
+
+const evColors=['#FF6B00','#0F6E56','#534AB7','#C2410C','#15803D']
+const sortedEvents=[...(events||[])].sort((a:any,b:any)=>a.date.localeCompare(b.date))
+
+return(
+<div>
+<Suspense fallback={<div style={{height:'42px',background:'#F3F4F6',borderBottom:'1px solid #E5E7EB'}}/>}>
+<FilterBar/>
+</Suspense>
+
+
+<div className='page-padding' style={{padding:'20px 24px'}}>
+<div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginBottom:'16px',flexWrap:'wrap' as const,gap:'12px'}}>
+<div>
+<h1 style={{fontSize:'21px',fontWeight:700,color:'#1A1A1A',letterSpacing:'-.3px',margin:0}}>Company calendar</h1>
+<p style={{fontSize:'12.5px',color:'#6B7280',marginTop:'3px',marginBottom:0}}>Every Gradion moment, in one place.</p>
+</div>
+</div>
+
+{/* Calendar card — shared nav header + two layouts */}
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'24px'}}>
+
+{/* Month navigation — always visible */}
+<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid #F3F4F6',flexWrap:'wrap' as const,gap:'8px'}}>
+<div style={{display:'flex',gap:'4px',alignItems:'center'}}>
+<a href={buildUrl({year:String(prevYear),month:String(prevMonth)})} style={{width:'28px',height:'28px',border:'1px solid #E5E7EB',borderRadius:'6px',background:'#fff',fontSize:'14px',color:'#374151',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>‹</a>
+<a href={buildUrl({year:String(today.getFullYear()),month:String(today.getMonth()+1)})} style={{height:'28px',padding:'0 10px',border:'1px solid #E5E7EB',borderRadius:'6px',background:'#fff',fontSize:'12px',color:'#374151',textDecoration:'none',display:'flex',alignItems:'center'}}>Today</a>
+<a href={buildUrl({year:String(nextYear),month:String(nextMonth)})} style={{width:'28px',height:'28px',border:'1px solid #E5E7EB',borderRadius:'6px',background:'#fff',fontSize:'14px',color:'#374151',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>›</a>
+</div>
+<span style={{fontSize:'15px',fontWeight:600,color:'#1A1A1A'}}>{monthName} {year}</span>
+<span style={{fontSize:'12px',color:'#6B7280'}}>{events?.length||0} events</span>
+</div>
+
+{/* ── Desktop full grid ── */}
+<div className='cal-desktop'>
+<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',background:'#F9FAFB',borderBottom:'1px solid #F3F4F6'}}>
+{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d:string,i:number)=>(
+<div key={d} style={{textAlign:'center',padding:'8px 0',fontSize:'10.5px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.05em',color:i>=5?'#FF6B00':'#9CA3AF'}}>{d}</div>
+))}
+</div>
+<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+{days.map((cell:any,i:number)=>(
+<div key={i} style={{borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',padding:'6px',minHeight:'90px',background:cell.date===todayStr?'#FFF7F0':cell.day?'#ffffff':'#FAFAFA',opacity:cell.day?1:.4}}>
+{cell.day&&(
+<>
+<div style={{fontSize:'11.5px',fontWeight:cell.date===todayStr?700:500,color:cell.date===todayStr?'#FF6B00':'#6B7280',marginBottom:'3px'}}>{cell.day}</div>
+{(()=>{const ce=eventsByDate[cell.date!]||[];const overflow=ce.length-2;return(<>{ce.slice(0,2).map((ev:any,ei:number)=>(<EventPill key={ev.id} ev={{...ev,firstImage:firstImageByEvent[ev.id]}} color={evColors[ei%evColors.length]}/>))}{overflow>0&&<span className='cal-overflow-pill'>+{overflow} more</span>}</>)})()}
+</>
+)}
+</div>
+))}
+</div>
+</div>
+
+{/* ── Mobile compact view ── */}
+<div className='cal-mobile' style={{display:'none'}}>
+{/* Mini day grid — dots only */}
+<div style={{borderBottom:'1px solid #F3F4F6'}}>
+<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',background:'#F9FAFB',borderBottom:'1px solid #F3F4F6'}}>
+{['M','T','W','T','F','S','S'].map((d:string,i:number)=>(
+<div key={i} style={{textAlign:'center',padding:'6px 0',fontSize:'10px',fontWeight:600,textTransform:'uppercase' as const,color:i>=5?'#FF6B00':'#9CA3AF'}}>{d}</div>
+))}
+</div>
+<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+{days.map((cell:any,i:number)=>{
+const hasEvents=cell.date&&(eventsByDate[cell.date]||[]).length>0
+const isToday=cell.date===todayStr
+return(
+<div key={i} style={{textAlign:'center',padding:'6px 2px',borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',minHeight:'44px',background:isToday?'#FFF7F0':cell.day?'#ffffff':'#FAFAFA',opacity:cell.day?1:.3,display:'flex',flexDirection:'column' as const,alignItems:'center',gap:'2px'}}>
+{cell.day&&(
+<>
+<span style={{fontSize:'12px',fontWeight:isToday?700:400,color:isToday?'#FF6B00':'#374151'}}>{cell.day}</span>
+{hasEvents&&<span style={{width:'5px',height:'5px',borderRadius:'50%',background:'#FF6B00',display:'block'}}/>}
+</>
+)}
+</div>
+)
+})}
+</div>
+</div>
+
+{/* Mobile event list */}
+<div style={{padding:'14px 16px'}}>
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.06em',color:'#6B7280',marginBottom:'10px'}}>
+Events this month ({events?.length||0})
+</div>
+{sortedEvents.length>0?(
+<div style={{display:'flex',flexDirection:'column' as const,gap:'8px'}}>
+{sortedEvents.map((ev:any)=>{
+const d=new Date(ev.date.slice(0,10)+'T00:00:00')
+const dateLabel=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})
+return(
+<a key={ev.id} href={'/events/'+ev.id} className='event-card' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'12px 14px'}}>
+<div style={{fontSize:'11px',color:'#FF6B00',fontWeight:500,marginBottom:'3px'}}>{dateLabel}</div>
+<div style={{fontSize:'14px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
+{ev.location&&<div style={{fontSize:'12px',color:'#6B7280',marginBottom:'4px',display:'flex',alignItems:'center',gap:'4px'}}><svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z'/><circle cx='12' cy='10' r='3'/></svg>{ev.location}</div>}
+<div style={{display:'flex',gap:'5px',flexWrap:'wrap' as const}}>
+{ev.category&&<span style={{fontSize:'10px',background:'#FFE4D1',color:'#E65C00',padding:'1px 8px',borderRadius:'999px',fontWeight:500}}>{ev.category}</span>}
+{ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.entity}</span>}
+</div>
+</a>
+)
+})}
+</div>
+):(
+<div className='empty-state'>
+<svg width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>
+<span>No events this month</span>
+</div>
+)}
+</div>
+</div>
+
+</div>
+
+<div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Recent events</div>
+<div className='events-grid' style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
+{recentEvents?.map((ev:any)=>(
+<a key={ev.id} href={'/events/'+ev.id} className='event-card'>
+<div className='event-card-inner' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'14px'}}>
+<div style={{fontSize:'11px',color:'#E65C00',fontWeight:500,marginBottom:'4px'}}>{new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
+<div style={{fontSize:'13.5px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
+{ev.description&&<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>{ev.description}</div>}
+<div style={{display:'flex',gap:'5px',marginTop:'8px',flexWrap:'wrap' as const}}>
+{ev.category&&<span style={{fontSize:'10px',background:'#FFE4D1',color:'#E65C00',padding:'1px 8px',borderRadius:'999px',fontWeight:500}}>{ev.category}</span>}
+{ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.entity}</span>}
+{ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.office}</span>}
+</div>
+</div>
+</a>
+))}
+</div>
+</div>
+</div>
+)
+}
+
+
+================================================================
+FILE: next.config.ts
+================================================================
+
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      new URL('https://jkefwcttcszndeebgkch.supabase.co/**'),
+    ],
+  },
+};
+
+export default nextConfig;
+
+================================================================
+FILE: fix-db-schema.sql
+================================================================
+
+-- =============================================================================
+-- EventHub — Missing schema fix
+-- Run this entire script in: Supabase Dashboard → SQL Editor → New query
+-- =============================================================================
+
+-- 1. Add missing columns to events (safe if already present)
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS event_time text;
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS timezone    text;
+
+-- 2. Create attendances table
+CREATE TABLE IF NOT EXISTS public.attendances (
+  id          uuid        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id    uuid        NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+  user_email  text        NOT NULL,
+  user_name   text        NOT NULL,
+  status      text        NOT NULL CHECK (status IN ('yes', 'maybe', 'no')),
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT attendances_event_user_unique UNIQUE (event_id, user_email)
+);
+
+-- 3. Grant table-level permissions
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.attendances TO authenticated;
+GRANT SELECT                          ON public.attendances TO anon;
+GRANT ALL                             ON public.attendances TO service_role;
+
+-- 4. Enable Row Level Security
+ALTER TABLE public.attendances ENABLE ROW LEVEL SECURITY;
+
+-- 5. RLS policies
+-- Anyone authenticated can read all attendances (to show counts)
+CREATE POLICY "att_select"
+  ON public.attendances FOR SELECT
+  TO authenticated
+  USING (true);
+
+-- Users can insert only their own row
+CREATE POLICY "att_insert"
+  ON public.attendances FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.email() = user_email);
+
+-- Users can update only their own row
+CREATE POLICY "att_update"
+  ON public.attendances FOR UPDATE
+  TO authenticated
+  USING      (auth.email() = user_email)
+  WITH CHECK (auth.email() = user_email);
+
+-- Users can delete only their own row
+CREATE POLICY "att_delete"
+  ON public.attendances FOR DELETE
+  TO authenticated
+  USING (auth.email() = user_email);
+
+-- 6. Auto-update updated_at on every UPDATE
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_attendances_updated_at ON public.attendances;
+CREATE TRIGGER set_attendances_updated_at
+  BEFORE UPDATE ON public.attendances
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- 7. Ensure events table has an INSERT policy for authenticated users
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename  = 'events'
+      AND policyname = 'events_insert'
+  ) THEN
+    EXECUTE $policy$
+      CREATE POLICY "events_insert"
+        ON public.events FOR INSERT
+        TO authenticated
+        WITH CHECK (true);
+    $policy$;
+  END IF;
+END;
+$$;
+
+-- 8. Reload PostgREST schema cache — clears the "table not found" error immediately
+NOTIFY pgrst, 'reload schema';
+
+================================================================
+FILE: package.json (dependencies only)
+================================================================
+
+{
+  "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/storage-js": "^2.103.2",
+    "next": "16.2.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
