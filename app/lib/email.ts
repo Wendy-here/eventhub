@@ -1,6 +1,6 @@
 import{Resend}from'resend'
 
-export const resend=new Resend(process.env.RESEND_API_KEY)
+function getResend(){if(!process.env.RESEND_API_KEY)return null;return new Resend(process.env.RESEND_API_KEY)}
 
 const FROM=process.env.NOTIFY_FROM_EMAIL||'Gradion Wall <noreply@gradion.com>'
 const APP_URL=process.env.NEXT_PUBLIC_APP_URL||'https://eventhub.vercel.app'
@@ -10,7 +10,7 @@ if(!process.env.RESEND_API_KEY||!process.env.NOTIFY_EMAIL_LIST)return
 const to=process.env.NOTIFY_EMAIL_LIST.split(',').map(e=>e.trim()).filter(Boolean)
 if(!to.length)return
 try{
-await resend.emails.send({
+await getResend()!.emails.send({
 from:FROM,
 to,
 subject:`New event: ${title}`,
@@ -27,7 +27,7 @@ console.error('[sendNewEventEmail]',err)
 export async function sendReminderEmail(to:string[],title:string,eventTime:string,timezone:string,eventId:string){
 if(!process.env.RESEND_API_KEY||!to.length)return
 try{
-await resend.emails.send({
+await getResend()!.emails.send({
 from:FROM,
 to,
 subject:`Reminder: "${title}" starts in 1 hour`,
