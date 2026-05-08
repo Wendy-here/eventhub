@@ -1,28 +1,7 @@
 'use server'
 import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{requireAdmin}from'@/app/lib/roles'
-import{Resend}from'resend'
-
-const resend=new Resend(process.env.RESEND_API_KEY)
-
-async function sendNewEventEmail(title:string,date:string,eventId:string){
-if(!process.env.RESEND_API_KEY||!process.env.NOTIFY_EMAIL_LIST)return
-const to=process.env.NOTIFY_EMAIL_LIST.split(',').map(e=>e.trim()).filter(Boolean)
-if(!to.length)return
-try{
-await resend.emails.send({
-from:process.env.NOTIFY_FROM_EMAIL||'Gradion Wall <noreply@gradion.com>',
-to,
-subject:`New event: ${title}`,
-html:`<p>A new event has been added to the Gradion Wall.</p>
-<h2>${title}</h2>
-<p>Date: ${date}</p>
-<p><a href="${process.env.NEXT_PUBLIC_APP_URL||'https://eventhub.vercel.app'}/events/${eventId}">View event →</a></p>`,
-})
-}catch(err){
-console.error('[sendNewEventEmail]',err)
-}
-}
+import{sendNewEventEmail}from'@/app/lib/email'
 
 export async function createEvent(formData:FormData):Promise<{id:string}|{error:string}>{
 await requireAdmin()
