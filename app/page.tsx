@@ -3,6 +3,7 @@ import{isAdmin}from'@/app/lib/roles'
 import{Suspense}from'react'
 import FilterBar from'@/app/components/FilterBar'
 import EventPill from'@/app/components/EventPill'
+import{allZoneTimes}from'@/app/lib/timezones'
 
 export default async function CalendarPage({searchParams}:any){
 const supabase=await getServerSupabase()
@@ -23,7 +24,7 @@ const monthName=new Date(year,month-1,1).toLocaleString('default',{month:'long'}
 // Only fetch fields needed by the calendar pill and mobile list
 // event_time + timezone omitted until ALTER TABLE migration has been run
 const CALENDAR_FIELDS='id,title,date,location,category,entity,office,description'
-const RECENT_FIELDS='id,title,date,description,category,entity,office'
+const RECENT_FIELDS='id,title,date,event_time,timezone,description,category,entity,office'
 
 const nextMonthFirstStr=month===12?`${year+1}-01-01`:`${year}-${pad(month+1)}-01`
 
@@ -215,6 +216,14 @@ return(
 {new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
 </div>
 <div style={{fontSize:'13.5px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
+{ev.event_time&&ev.timezone&&(
+<div style={{fontSize:'11px',color:'#6B7280',marginBottom:'6px',display:'flex',alignItems:'center',gap:'4px',flexWrap:'wrap' as const}}>
+<span>🕒</span>
+{allZoneTimes(ev.event_time,ev.timezone,ev.date).map(({tz,time},i,arr)=>(
+<span key={tz}>{time} ({tz==='Vietnam / Thailand'?'VN':tz==='Egypt'?'EG':'DE'}){i<arr.length-1?' | ':''}</span>
+))}
+</div>
+)}
 {ev.description&&(
 <div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>
 {ev.description}

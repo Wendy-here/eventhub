@@ -2,9 +2,10 @@ import{getServerSupabase}from'@/app/lib/supabaseServer'
 import{isAdmin}from'@/app/lib/roles'
 import{Suspense}from'react'
 import EventsFilterBar from'@/app/components/EventsFilterBar'
+import{allZoneTimes}from'@/app/lib/timezones'
 
 const PAGE_SIZE=10
-const LIST_FIELDS='id,title,date,location,category,entity,office,tags,description,drive_link'
+const LIST_FIELDS='id,title,date,event_time,timezone,location,category,entity,office,tags,description,drive_link'
 
 export default async function EventsPage({searchParams}:any){
 const supabase=await getServerSupabase()
@@ -98,10 +99,18 @@ return(
 <div style={{fontSize:'15px',fontWeight:600,color:'#111827'}}>{ev.title}</div>
 {ev.drive_link&&<span style={{fontSize:'10px',background:'#F0FDF4',color:'#15803D',border:'1px solid #BBF7D0',padding:'1px 7px',borderRadius:'10px'}}>Drive</span>}
 </div>
-<div style={{display:'flex',gap:'12px',fontSize:'12px',color:'#6B7280'}}>
+<div style={{display:'flex',flexWrap:'wrap' as const,gap:'12px',fontSize:'12px',color:'#6B7280'}}>
 <span>📅 {new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span>
 {ev.location&&<span>📍 {ev.location}</span>}
 </div>
+{ev.event_time&&ev.timezone&&(
+<div style={{fontSize:'11px',color:'#6B7280',marginTop:'4px',display:'flex',alignItems:'center',gap:'4px',flexWrap:'wrap' as const}}>
+<span>🕒</span>
+{allZoneTimes(ev.event_time,ev.timezone,ev.date).map(({tz,time},i,arr)=>(
+<span key={tz}>{time} ({tz==='Vietnam / Thailand'?'VN':tz==='Egypt'?'EG':'DE'}){i<arr.length-1?' | ':''}</span>
+))}
+</div>
+)}
 </div>
 <div style={{color:'#9CA3AF',fontSize:'18px',marginLeft:'12px'}}>›</div>
 </div>
