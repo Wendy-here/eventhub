@@ -3,6 +3,7 @@ import{notFound}from'next/navigation'
 import{updateEvent,deleteEvent,deleteImage}from'./actions'
 import DeleteButton from'./DeleteButton'
 import DateTimePicker from'@/app/components/DateTimePicker'
+import CoverImageUploader from'@/app/components/CoverImageUploader'
 import Image from'next/image'
 import{TIMEZONE_KEYS}from'@/app/lib/timezones'
 
@@ -22,7 +23,7 @@ if(!event)return notFound()
 const{data:images}=await supabase.from('event_images').select('*').eq('event_id',id).order('sort_order')
 const{data:categories}=await supabase.from('categories').select('id,name').order('name')
 const tagsStr=event.tags?event.tags.join(', '):''
-const inp={width:'100%',border:'1px solid #E5E7EB',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',color:'#1A1A1A',background:'#ffffff'}
+const inp={width:'100%',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'0 12px',height:'38px',fontSize:'13px',fontFamily:'Noto Sans,sans-serif',outline:'none',color:'#1A1A1A',background:'#ffffff'}
 
 return(
 <div style={{padding:'20px 24px',maxWidth:'680px',margin:'0 auto'}}>
@@ -91,7 +92,7 @@ timezoneOptions={TIMEZONE_KEYS}
 </div>
 <div>
 <label style={{display:'block',fontSize:'12px',fontWeight:500,color:'#374151',marginBottom:'5px'}}>Description</label>
-<textarea name='description' rows={4} defaultValue={event.description||''} style={{...inp,resize:'vertical' as const}}/>
+<textarea name='description' rows={4} defaultValue={event.description||''} style={{...inp,height:'auto',minHeight:'90px',padding:'8px 12px',resize:'vertical' as const}}/>
 </div>
 <div style={{display:'flex',justifyContent:'flex-end',paddingTop:'8px',borderTop:'1px solid #F3F4F6'}}>
 <button type='submit' style={{background:'#FF6B00',color:'#fff',border:'none',padding:'9px 18px',borderRadius:'8px',fontSize:'13px',fontWeight:500,cursor:'pointer',fontFamily:'Noto Sans,sans-serif'}}>Save changes</button>
@@ -99,6 +100,15 @@ timezoneOptions={TIMEZONE_KEYS}
 </div>
 </div>
 </form>
+
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
+<div style={{padding:'12px 18px',borderBottom:'1px solid #F3F4F6'}}>
+<div style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF',textTransform:'uppercase' as const,letterSpacing:'.07em'}}>Cover image</div>
+</div>
+<div style={{padding:'16px'}}>
+<CoverImageUploader eventId={id} currentUrl={event.cover_image_url||null}/>
+</div>
+</div>
 
 <div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
 <div style={{padding:'12px 18px',borderBottom:'1px solid #F3F4F6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>

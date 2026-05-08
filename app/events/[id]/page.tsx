@@ -5,6 +5,7 @@ import ReactionsComments from'@/app/components/ReactionsComments'
 import AttendanceBar from'@/app/components/AttendanceBar'
 import Image from'next/image'
 import{allZoneTimes}from'@/app/lib/timezones'
+import{getCoverGradient}from'@/app/lib/coverImage'
 
 export default async function EventPage(props:any){
 const supabase=await getServerSupabase()
@@ -33,53 +34,62 @@ return(
 Back to calendar
 </a>
 
-<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',overflow:'hidden',marginBottom:'16px'}}>
-<div style={{padding:'24px 28px'}}>
-<div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'12px',flexWrap:'wrap' as const,marginBottom:'16px'}}>
-<div style={{flex:1,minWidth:0}}>
-<h1 style={{fontSize:'24px',fontWeight:700,color:'#1A1A1A',letterSpacing:'-.4px',margin:'0 0 10px',lineHeight:1.25}}>{event.title}</h1>
+{/* ── Hero cover image ── */}
+<div style={{position:'relative',height:'220px',borderRadius:'16px',overflow:'hidden',marginBottom:'16px',background:event.cover_image_url?'transparent':getCoverGradient(event.category,event.id)}}>
+{event.cover_image_url&&<Image src={event.cover_image_url} alt={event.title} fill sizes='(max-width:860px) 100vw, 860px' style={{objectFit:'cover'}} priority/>}
+
+{/* Gradient overlay — dark at bottom for text legibility */}
+<div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)'}}/>
+
+{/* Admin action buttons — top right */}
+{admin&&(
+<div style={{position:'absolute',top:'12px',right:'12px',display:'flex',gap:'8px',zIndex:2}}>
+<a href={'/events/'+id+'/edit'} style={{background:'rgba(0,0,0,.45)',backdropFilter:'blur(6px)',color:'#ffffff',padding:'6px 14px',borderRadius:'8px',fontSize:'13px',textDecoration:'none',fontWeight:500}}>Edit</a>
+<a href={'/events/'+id+'/upload'} style={{background:'rgba(0,0,0,.45)',backdropFilter:'blur(6px)',color:'#ffffff',padding:'6px 14px',borderRadius:'8px',fontSize:'13px',textDecoration:'none',fontWeight:500}}>+ Upload</a>
+</div>
+)}
+
+{/* Title + meta overlaid at bottom */}
+<div style={{position:'absolute',bottom:0,left:0,right:0,padding:'20px 24px',zIndex:1}}>
+<h1 style={{fontSize:'26px',fontWeight:800,color:'#ffffff',letterSpacing:'-.4px',margin:'0 0 8px',lineHeight:1.25,textShadow:'0 1px 6px rgba(0,0,0,.35)'}}>{event.title}</h1>
 <div style={{display:'flex',flexDirection:'column' as const,gap:'4px'}}>
-<div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13.5px',color:'#374151',fontWeight:500}}>
-<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' style={{flexShrink:0}}><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>
+<div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13.5px',color:'rgba(255,255,255,.9)',fontWeight:500}}>
+<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,.7)' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' style={{flexShrink:0}}><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>
 <span>{date}</span>
 </div>
 {event.event_time&&event.timezone&&(
-<div style={{display:'flex',flexWrap:'wrap' as const,gap:'10px',alignItems:'center',paddingLeft:'21px'}}>
+<div style={{display:'flex',flexWrap:'wrap' as const,gap:'8px',alignItems:'center',paddingLeft:'21px'}}>
 {allZoneTimes(event.event_time,event.timezone,event.date).map(({tz,time,abbr})=>(
 <span key={tz} style={{display:'inline-flex',alignItems:'center',gap:'4px',fontSize:'12.5px'}}>
-<span style={{fontWeight:600,color:'#1A1A1A'}}>{time}</span>
-<span style={{fontSize:'10.5px',background:'#FFF3EB',color:'#FF6B00',padding:'1px 6px',borderRadius:'4px',fontWeight:600}}>{abbr}</span>
-<span style={{fontSize:'11.5px',color:'#9CA3AF'}}>{tz}</span>
+<span style={{fontWeight:600,color:'#ffffff'}}>{time}</span>
+<span style={{fontSize:'10.5px',background:'rgba(255,107,0,.75)',color:'#ffffff',padding:'1px 6px',borderRadius:'4px',fontWeight:600}}>{abbr}</span>
+<span style={{fontSize:'11.5px',color:'rgba(255,255,255,.7)'}}>{tz}</span>
 </span>
 ))}
 </div>
 )}
 {event.location&&(
-<div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13px',color:'#6B7280'}}>
-<svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' style={{flexShrink:0}}><path d='M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z'/><circle cx='12' cy='10' r='3'/></svg>
+<div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13px',color:'rgba(255,255,255,.8)'}}>
+<svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,.6)' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' style={{flexShrink:0}}><path d='M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z'/><circle cx='12' cy='10' r='3'/></svg>
 <span>{event.location}</span>
 </div>
 )}
 </div>
+<div style={{display:'flex',flexWrap:'wrap' as const,gap:'5px',marginTop:'10px'}}>
+{event.category&&<span style={{fontSize:'10.5px',background:'rgba(255,107,0,.75)',color:'#ffffff',padding:'2px 9px',borderRadius:'999px',fontWeight:600,backdropFilter:'blur(4px)'}}>{event.category}</span>}
+{event.entity&&<span style={{fontSize:'10.5px',background:'rgba(255,255,255,.2)',color:'#ffffff',padding:'2px 9px',borderRadius:'999px',backdropFilter:'blur(4px)'}}>{event.entity}</span>}
+{event.office&&<span style={{fontSize:'10.5px',background:'rgba(255,255,255,.2)',color:'#ffffff',padding:'2px 9px',borderRadius:'999px',backdropFilter:'blur(4px)'}}>{event.office}</span>}
+{event.tags&&event.tags.map((tag:string)=><span key={tag} style={{fontSize:'10.5px',background:'rgba(255,255,255,.15)',color:'rgba(255,255,255,.85)',padding:'2px 9px',borderRadius:'999px'}}>#{tag}</span>)}
 </div>
-{admin&&(
-<div style={{display:'flex',gap:'6px',flexShrink:0}}>
-<a href={'/events/'+id+'/edit'} style={{background:'#F9FAFB',color:'#374151',border:'1px solid #E5E7EB',padding:'7px 14px',borderRadius:'8px',fontSize:'13px',textDecoration:'none',fontWeight:500}}>Edit</a>
-<a href={'/events/'+id+'/upload'} style={{background:'#FF6B00',color:'#fff',padding:'7px 14px',borderRadius:'8px',fontSize:'13px',textDecoration:'none',fontWeight:500}}>+ Upload</a>
+</div>
+</div>
+
+{/* Description below hero */}
+{event.description&&(
+<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',padding:'16px 20px',marginBottom:'16px'}}>
+<p style={{fontSize:'14px',color:'#4B5563',lineHeight:1.8,margin:0}}>{event.description}</p>
 </div>
 )}
-</div>
-
-{event.description&&<p style={{fontSize:'14px',color:'#4B5563',lineHeight:1.8,margin:'0 0 16px',borderLeft:'3px solid #FFE4D1',paddingLeft:'14px'}}>{event.description}</p>}
-
-<div style={{display:'flex',flexWrap:'wrap' as const,gap:'6px'}}>
-{event.category&&<span style={{fontSize:'11px',background:'#FFF3EB',color:'#FF6B00',padding:'3px 10px',borderRadius:'999px',fontWeight:600,border:'1px solid #FFE4D1'}}>{event.category}</span>}
-{event.entity&&<span style={{fontSize:'11px',background:'#F3F4F6',color:'#374151',padding:'3px 10px',borderRadius:'999px',border:'1px solid #E5E7EB'}}>{event.entity}</span>}
-{event.office&&<span style={{fontSize:'11px',background:'#F3F4F6',color:'#374151',padding:'3px 10px',borderRadius:'999px',border:'1px solid #E5E7EB'}}>{event.office}</span>}
-{event.tags&&event.tags.map((tag:string)=><span key={tag} style={{fontSize:'11px',background:'#F9FAFB',color:'#9CA3AF',padding:'3px 10px',borderRadius:'999px',border:'1px solid #F3F4F6'}}>#{tag}</span>)}
-</div>
-</div>
-</div>
 
 <AttendanceBar
 eventId={id}

@@ -65,7 +65,7 @@ const hasFilters=!!(category||entity||office||search)
 const sel=(active:boolean)=>({
 height:'34px',padding:'0 12px',
 border:'1px solid '+(active?'#FF6B00':'#E5E7EB'),
-borderRadius:'8px',
+borderRadius:'10px',
 background:active?'#FFF3EB':'#ffffff',
 color:active?'#FF6B00':'#374151',
 fontSize:'12px',fontFamily:'Noto Sans,sans-serif',
@@ -76,7 +76,7 @@ opacity:isPending?.6:1,
 } as React.CSSProperties)
 
 return(
-<div className='filter-bar' style={{background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',padding:'0 16px',minHeight:'50px',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap' as const,paddingTop:'8px',paddingBottom:'8px',transition:'opacity .2s',opacity:isPending?.75:1}}>
+<div className='filter-bar' style={{background:'#ffffff',borderBottom:'1px solid #E5E7EB',padding:'0 16px',minHeight:'50px',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap' as const,paddingTop:'8px',paddingBottom:'8px',transition:'opacity .2s',opacity:isPending?.75:1}}>
 
 {/* Search input with debounce */}
 <div style={{position:'relative' as const,display:'flex',alignItems:'center'}}>
@@ -85,7 +85,7 @@ return(
 value={searchInput}
 onChange={e=>setSearchInput(e.target.value)}
 placeholder='Search events…'
-style={{height:'34px',padding:'0 28px 0 30px',border:'1px solid '+(search?'#FF6B00':'#E5E7EB'),borderRadius:'8px',background:search?'#FFF3EB':'#ffffff',color:search?'#FF6B00':'#374151',fontSize:'12px',fontFamily:'Noto Sans,sans-serif',outline:'none',width:'160px',fontWeight:search?600:400,opacity:isPending?.6:1,transition:'opacity .15s'}}
+style={{height:'34px',padding:'0 28px 0 30px',border:'1px solid '+(search?'#FF6B00':'#E5E7EB'),borderRadius:'10px',background:search?'#FFF3EB':'#ffffff',color:search?'#FF6B00':'#374151',fontSize:'12px',fontFamily:'Noto Sans,sans-serif',outline:'none',width:'160px',fontWeight:search?600:400,opacity:isPending?.6:1,transition:'opacity .15s'}}
 />
 {searchInput&&(
 <button

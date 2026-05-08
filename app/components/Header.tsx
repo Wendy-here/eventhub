@@ -4,10 +4,11 @@ import{usePathname}from'next/navigation'
 import Image from'next/image'
 import Link from'next/link'
 import{signOut,setPreviewRole}from'@/app/lib/account-actions'
+import NotificationBell from'@/app/components/NotificationBell'
 
-type Props={initials:string,name:string,email:string,isRealAdmin:boolean,isPreviewing:boolean}
+type Props={initials:string,name:string,email:string,isRealAdmin:boolean,isAdmin:boolean,isPreviewing:boolean}
 
-export default function Header({initials,name,email,isRealAdmin,isPreviewing}:Props){
+export default function Header({initials,name,email,isRealAdmin,isAdmin,isPreviewing}:Props){
 const[menuOpen,setMenuOpen]=useState(false)
 const[dropOpen,setDropOpen]=useState(false)
 const dropRef=useRef<HTMLDivElement>(null)
@@ -22,8 +23,8 @@ return()=>document.removeEventListener('mousedown',h)
 const isActive=(href:string)=>href==='/'?pathname===href:pathname.startsWith(href)
 
 const navStyle=(href:string):React.CSSProperties=>({
-padding:'5px 10px',
-borderRadius:'6px',
+padding:'6px 12px',
+borderRadius:'8px',
 fontSize:'13px',
 fontWeight:isActive(href)?600:500,
 color:isActive(href)?'#FF6B00':'#374151',
@@ -41,7 +42,7 @@ const mobileNavLink=(href:string,icon:React.ReactNode,label:string)=>(
 return(
 <>
 <header style={{background:'#ffffff',borderBottom:'1px solid #E5E7EB',position:'sticky',top:0,zIndex:50}}>
-<div style={{maxWidth:'1200px',margin:'0 auto',padding:'0 16px',height:'52px',display:'flex',alignItems:'center',gap:'10px'}}>
+<div style={{maxWidth:'1200px',margin:'0 auto',padding:'0 16px',height:'56px',display:'flex',alignItems:'center',gap:'10px'}}>
 
 <Image src='https://jkefwcttcszndeebgkch.supabase.co/storage/v1/object/public/assets/gradion-logo.png' alt='Gradion' width={90} height={28} style={{height:'28px',width:'auto',flexShrink:0}}/>
 <div className='desktop-only' style={{width:'1px',height:'26px',background:'#E5E7EB',margin:'0 2px',flexShrink:0}}/>
@@ -63,7 +64,12 @@ return(
 </div>
 </form>
 
-<Link href='/admin/events/new' className='desktop-only' style={{background:'#FF6B00',color:'#fff',padding:'7px 14px',borderRadius:'8px',fontSize:'13px',fontWeight:500,textDecoration:'none',whiteSpace:'nowrap'}}>+ New event</Link>
+{isAdmin&&<Link href='/admin/events/new' className='desktop-only' style={{background:'#FF6B00',color:'#fff',padding:'7px 14px',borderRadius:'8px',fontSize:'13px',fontWeight:500,textDecoration:'none',whiteSpace:'nowrap'}}>+ New event</Link>}
+
+<div style={{display:'flex',alignItems:'center',gap:'16px',flexShrink:0}}>
+
+{/* Notification bell */}
+<NotificationBell userEmail={email}/>
 
 {/* Avatar + dropdown */}
 <div ref={dropRef} style={{position:'relative',flexShrink:0}}>
@@ -71,16 +77,16 @@ return(
 onClick={()=>setDropOpen(!dropOpen)}
 style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'none',cursor:'pointer',padding:'4px 6px',borderRadius:'8px'}}
 >
-<div style={{width:'30px',height:'30px',borderRadius:'50%',background:'#FF6B00',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#fff',flexShrink:0}}>{initials}</div>
+<div style={{width:'32px',height:'32px',borderRadius:'50%',background:'#FF6B00',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#fff',flexShrink:0}}>{initials}</div>
 <div className='desktop-only' style={{display:'flex',flexDirection:'column',alignItems:'flex-start'}}>
 <span style={{fontSize:'12px',fontWeight:500,color:'#1A1A1A',lineHeight:1.2}}>{name.split(' ')[0]}</span>
-<span style={{fontSize:'10px',color:'#9CA3AF',lineHeight:1.2}}>{isPreviewing?'Member (preview)':'Admin'}</span>
+<span style={{fontSize:'10px',color:'#9CA3AF',lineHeight:1.2}}>{isPreviewing?'Member (preview)':isAdmin?'Admin':'Member'}</span>
 </div>
 <svg className='desktop-only' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='#9CA3AF' strokeWidth='1.5'><path d='M2 4l3 3 3-3'/></svg>
 </button>
 
 {dropOpen&&(
-<div style={{position:'absolute',top:'calc(100% + 6px)',right:0,width:'260px',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'12px',boxShadow:'0 8px 32px rgba(0,0,0,.1)',overflow:'hidden',zIndex:100}}>
+<div style={{position:'absolute',top:'calc(100% + 6px)',right:0,width:'260px',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'16px',boxShadow:'0 8px 32px rgba(0,0,0,.1)',overflow:'hidden',zIndex:100}}>
 <div style={{padding:'14px 16px',borderBottom:'1px solid #F3F4F6'}}>
 <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
 <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'#FF6B00',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'13px',fontWeight:700,color:'#fff',flexShrink:0}}>{initials}</div>
@@ -130,6 +136,8 @@ style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'n
 )}
 </div>
 
+</div>{/* end bell+avatar group */}
+
 {/* Mobile hamburger */}
 <button className='mobile-only' onClick={()=>setMenuOpen(!menuOpen)} aria-label='Menu' style={{width:'36px',height:'36px',border:'1px solid #E5E7EB',borderRadius:'8px',background:'#ffffff',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,color:'#374151'}}>
 {menuOpen
@@ -149,7 +157,7 @@ style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'n
 {mobileNavLink('/images',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>,'Images')}
 {isRealAdmin&&mobileNavLink('/admin/categories',<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z'/><line x1='7' y1='7' x2='7.01' y2='7'/></svg>,'Categories')}
 </nav>
-<Link href='/admin/events/new' style={{display:'block',background:'#FF6B00',color:'#fff',padding:'10px 16px',borderRadius:'8px',fontSize:'14px',fontWeight:500,textDecoration:'none',textAlign:'center' as const,marginBottom:'12px'}}>+ New event</Link>
+{isAdmin&&<Link href='/admin/events/new' style={{display:'block',background:'#FF6B00',color:'#fff',padding:'10px 16px',borderRadius:'8px',fontSize:'14px',fontWeight:500,textDecoration:'none',textAlign:'center' as const,marginBottom:'12px'}}>+ New event</Link>}
 <form method='GET' action='/'>
 <div style={{position:'relative',display:'flex',alignItems:'center'}}>
 <svg style={{position:'absolute',left:'10px',color:'#9CA3AF'}} width='13' height='13' viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5'><circle cx='6.5' cy='6.5' r='5'/><path d='M11 11l3 3' strokeLinecap='round'/></svg>
@@ -162,7 +170,7 @@ style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'n
 </header>
 
 {isPreviewing&&(
-<div style={{background:'#FFF3EB',borderBottom:'1px solid #FFD4B8',padding:'8px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px',position:'sticky',top:'52px',zIndex:49}}>
+<div style={{background:'#FFF3EB',borderBottom:'1px solid #FFD4B8',padding:'8px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px',position:'sticky',top:'56px',zIndex:49}}>
 <span style={{fontSize:'13px',color:'#C2410C',fontWeight:500}}>👁 Previewing as Member — admin features are hidden</span>
 <form action={setPreviewRole.bind(null,'off')}>
 <button type='submit' style={{fontSize:'12px',fontWeight:600,color:'#FF6B00',background:'none',border:'1px solid #FF6B00',borderRadius:'6px',padding:'3px 10px',cursor:'pointer'}}>Exit preview</button>

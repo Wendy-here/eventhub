@@ -1,7 +1,9 @@
 'use server'
 import{getServerSupabase}from'@/app/lib/supabaseServer'
+import{requireAdmin}from'@/app/lib/roles'
 
 export async function createEvent(formData:FormData):Promise<{id:string}|{error:string}>{
+await requireAdmin()
 const supabase=await getServerSupabase()
 const title=formData.get('title') as string
 const date=formData.get('date') as string
@@ -13,6 +15,7 @@ const entity=formData.get('entity') as string
 const office=formData.get('office') as string
 const tagsRaw=formData.get('tags') as string
 const tags=tagsRaw?tagsRaw.split(',').map((t:string)=>t.trim()).filter(Boolean):[]
+const cover_image_url=formData.get('cover_image_url') as string
 const{data,error}=await supabase.from('events').insert({
 title,date,
 description:description||null,
@@ -22,10 +25,18 @@ drive_link:drive_link||null,
 category:category||null,
 entity:entity||null,
 office:office||null,
+cover_image_url:cover_image_url||null,
 }).select('id').single()
 if(error){
 console.error('[createEvent]',JSON.stringify(error))
 return{error:error.message||error.code||'Insert failed'}
 }
+// Broadcast notification to all users (user_email null = everyone sees it)
+await supabase.from('notifications').insert({
+user_email:null,
+message:'New event added: '+title,
+link:'/events/'+data.id,
+is_read:false,
+})
 return{id:data.id}
 }
