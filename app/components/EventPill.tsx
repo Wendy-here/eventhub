@@ -1,12 +1,7 @@
 'use client'
-import{useState,useRef,useCallback,useEffect}from'react'
-import{createPortal}from'react-dom'
+import{useState,useRef}from'react'
 import Image from'next/image'
 import Link from'next/link'
-
-const TOOLTIP_W=248
-const TOOLTIP_MAX_H=320
-const MARGIN=8 // min distance from viewport edge
 
 type EventData={
 id:string
@@ -23,131 +18,94 @@ description?:string
 firstImage?:string
 }
 
-type Pos={top:number,left:number}
-
-export default function EventPill({ev,color}:{ev:EventData,color:string}){
+export default function EventPill({ev,color}:{ev:EventData;color:string}){
 const[show,setShow]=useState(false)
-const[pos,setPos]=useState<Pos>({top:0,left:0})
-const[mounted,setMounted]=useState(false)
-const timerRef=useRef<ReturnType<typeof setTimeout>|null>(null)
+const[above,setAbove]=useState(false)
 const pillRef=useRef<HTMLDivElement>(null)
-const tappedRef=useRef(false)
+const timerRef=useRef<ReturnType<typeof setTimeout>|null>(null)
 
-// Ensure we're on the client before attempting portal
-useEffect(()=>{setMounted(true)},[])
-
-const open=useCallback(()=>{
+const open=()=>{
 if(!pillRef.current)return
 const rect=pillRef.current.getBoundingClientRect()
-const spaceBelow=window.innerHeight-rect.bottom
-const spaceAbove=rect.top
-const tooltipH=ev.firstImage?TOOLTIP_MAX_H:200
-
-// Prefer below; flip above if not enough room
-let top=spaceBelow>=tooltipH+MARGIN
-?rect.bottom+6
-:rect.top-tooltipH-6
-
-// Clamp vertically
-top=Math.max(MARGIN,Math.min(top,window.innerHeight-tooltipH-MARGIN))
-
-// Center horizontally over pill, then clamp
-const idealLeft=rect.left+rect.width/2-TOOLTIP_W/2
-const left=Math.max(MARGIN,Math.min(idealLeft,window.innerWidth-TOOLTIP_W-MARGIN))
-
-setPos({top,left})
+setAbove(window.innerHeight-rect.bottom<200)
 setShow(true)
-},[ev.firstImage])
-
-const close=useCallback(()=>{
-if(timerRef.current)clearTimeout(timerRef.current)
-setShow(false)
-},[])
-
-const onMouseEnter=()=>{timerRef.current=setTimeout(open,130)}
-const onMouseLeave=()=>close()
-
-const onTouchEnd=(e:React.TouchEvent)=>{
-if(!tappedRef.current){
-e.preventDefault()
-tappedRef.current=true
-open()
-setTimeout(()=>{tappedRef.current=false;setShow(false)},4000)
-}
 }
 
-const date=new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})
+const onMouseEnter=()=>{timerRef.current=setTimeout(open,120)}
+const onMouseLeave=()=>{if(timerRef.current)clearTimeout(timerRef.current);setShow(false)}
 
-const tooltip=(
-<div
+const date=new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{
+weekday:'short',day:'numeric',month:'short',year:'numeric'
+})
+
+const timeLabel=ev.event_time
+?ev.event_time.slice(0,5)+(ev.event_end_time?'→'+ev.event_end_time.slice(0,5):'')
+:null
+
+return(
+<div ref={pillRef} style={{position:'relative'}} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+<Link
+href={'/events/'+ev.id}
+className='event-pill-link'
 style={{
-position:'fixed',
-top:pos.top,
-left:pos.left,
-width:TOOLTIP_W,
+display:'block',padding:'2px 6px',borderRadius:'4px',
+fontSize:'10.5px',fontWeight:600,marginBottom:'2px',
+textDecoration:'none',background:color,color:'#ffffff',
+whiteSpace:'nowrap' as const,overflow:'hidden',textOverflow:'ellipsis',lineHeight:1.3,
+}}
+>
+{ev.title}
+{timeLabel&&(
+<span style={{display:'block',fontSize:'9.5px',opacity:.85,fontWeight:400,marginTop:'1px'}}>
+{timeLabel}
+</span>
+)}
+</Link>
+
+{show&&(
+<div style={{
+position:'absolute',
+...(above?{bottom:'calc(100% + 4px)'}:{top:'calc(100% + 4px)'}),
+left:'0',
+width:'220px',
 zIndex:9999,
 background:'#ffffff',
 border:'1px solid #E5E7EB',
-borderRadius:'12px',
-boxShadow:'0 8px 40px rgba(0,0,0,.14)',
+borderRadius:'10px',
+boxShadow:'0 4px 20px rgba(0,0,0,.12)',
 overflow:'hidden',
 pointerEvents:'none',
-}}
->
+}}>
 {ev.firstImage&&(
-<div style={{position:'relative',height:'88px',background:'#F3F4F6',flexShrink:0}}>
-<Image src={ev.firstImage} alt='' fill sizes='248px' style={{objectFit:'cover'}}/>
+<div style={{position:'relative',height:'80px',background:'#F3F4F6'}}>
+<Image src={ev.firstImage} alt='' fill sizes='220px' style={{objectFit:'cover'}}/>
 </div>
 )}
-<div style={{padding:'10px 12px'}}>
-<div style={{fontSize:'13px',fontWeight:600,color:'#1A1A1A',marginBottom:'6px',lineHeight:1.3}}>{ev.title}</div>
-<div style={{fontSize:'11.5px',color:'#6B7280',lineHeight:1.65}}>
+<div style={{padding:'9px 11px'}}>
+<div style={{fontSize:'12.5px',fontWeight:600,color:'#1A1A1A',marginBottom:'5px',lineHeight:1.3}}>
+{ev.title}
+</div>
+<div style={{fontSize:'11px',color:'#6B7280',lineHeight:1.7}}>
 <div>📅 {date}</div>
-{ev.event_time&&ev.timezone&&(
-<div style={{marginTop:'4px'}}>
-🕐 {ev.event_time.slice(0,5)}{ev.event_end_time?'→'+ev.event_end_time.slice(0,5):''} · {ev.timezone}
-</div>
-)}
+{timeLabel&&<div>🕐 {timeLabel} · {ev.timezone}</div>}
 {ev.location&&<div>📍 {ev.location}</div>}
 </div>
 {(ev.category||ev.entity||ev.office)&&(
-<div style={{display:'flex',gap:'4px',flexWrap:'wrap' as const,marginTop:'7px'}}>
+<div style={{display:'flex',gap:'4px',flexWrap:'wrap' as const,marginTop:'6px'}}>
 {ev.category&&<span style={{fontSize:'10px',background:'#FFF3EB',color:'#FF6B00',padding:'1px 7px',borderRadius:'999px',fontWeight:600}}>{ev.category}</span>}
 {ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#374151',padding:'1px 7px',borderRadius:'999px'}}>{ev.entity}</span>}
 {ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#374151',padding:'1px 7px',borderRadius:'999px'}}>{ev.office}</span>}
 </div>
 )}
 {ev.description&&(
-<div style={{
-fontSize:'11.5px',color:'#6B7280',marginTop:'7px',lineHeight:1.5,
-overflow:'hidden',display:'-webkit-box',
-WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const,
-maxHeight:'36px',
-}}>
+<div style={{fontSize:'11px',color:'#6B7280',marginTop:'6px',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>
 {ev.description}
 </div>
 )}
-<div style={{fontSize:'10.5px',color:'#C4C9D4',marginTop:'8px',textAlign:'right' as const,fontStyle:'italic'}}>Click to open →</div>
+<div style={{fontSize:'10px',color:'#C4C9D4',marginTop:'6px',textAlign:'right' as const,fontStyle:'italic'}}>Click to open →</div>
 </div>
 </div>
-)
-
-return(
-<div ref={pillRef} style={{position:'relative'}} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-<Link
-href={'/events/'+ev.id}
-onTouchEnd={onTouchEnd}
-className='event-pill-link'
-style={{display:'block',padding:'2px 6px',borderRadius:'4px',fontSize:'10.5px',fontWeight:500,marginBottom:'2px',textDecoration:'none',background:color,color:'#ffffff',whiteSpace:'nowrap' as const,overflow:'hidden',textOverflow:'ellipsis'}}
->
-{ev.title}
-{ev.event_time&&(
-<span style={{display:'block',fontSize:'9.5px',opacity:.85,fontWeight:400,marginTop:'1px'}}>
-{ev.event_time.slice(0,5)}{ev.event_end_time?'→'+ev.event_end_time.slice(0,5):''}
-</span>
 )}
-</Link>
-{mounted&&show&&createPortal(tooltip,document.body)}
 </div>
 )
 }

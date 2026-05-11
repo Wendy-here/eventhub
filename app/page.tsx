@@ -99,7 +99,6 @@ return(
 
 
 <div className="page-padding" style={{padding:"20px 24px"}}>
-{calErr&&<div style={{color:"red",fontSize:"12px",padding:"8px"}}>CAL ERR: {calErr.message}</div>}
 <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginBottom:'16px',flexWrap:'wrap' as const,gap:'12px'}}>
 <div>
 <h1 style={{fontSize:'21px',fontWeight:700,color:'#1A1A1A',letterSpacing:'-.3px',margin:0}}>Company calendar</h1>
