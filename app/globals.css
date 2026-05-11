@@ -2,11 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: var(--font-noto-sans), sans-serif;
@@ -14,109 +10,33 @@ body {
   color: #111827;
 }
 
-/* ── Responsive utilities ───────────────────────────── */
-@media (max-width: 767px) {
-  .desktop-only { display: none !important; }
-}
-@media (min-width: 768px) {
-  .mobile-only { display: none !important; }
-}
+a { text-decoration: none; }
+a:hover { background: transparent !important; color: inherit !important; }
 
-/* Calendar: hide full grid on mobile, show list; opposite on desktop */
-@media (max-width: 639px) {
-  .cal-desktop { display: none !important; }
-  .cal-mobile   { display: block !important; }
-  /* Compact day cells */
-  .cal-day-cell { min-height: 44px !important; padding: 4px !important; }
-}
-@media (min-width: 640px) {
-  .cal-mobile { display: none !important; }
-}
+@media (max-width: 767px) { .desktop-only { display: none !important; } }
+@media (min-width: 768px) { .mobile-only { display: none !important; } }
+@media (max-width: 639px) { .cal-desktop { display: none !important; } .cal-mobile { display: block !important; } }
+@media (min-width: 640px) { .cal-mobile { display: none !important; } }
+@media (max-width: 639px) { .events-grid { grid-template-columns: 1fr !important; } }
+@media (min-width: 640px) and (max-width: 1023px) { .events-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 767px) { .filter-bar { overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; } .filter-bar::-webkit-scrollbar { display: none; } }
+@media (max-width: 639px) { .page-padding { padding: 14px 16px !important; } }
 
-/* Recent-events grid: 3-col → 2-col → 1-col */
-@media (max-width: 639px) {
-  .events-grid { grid-template-columns: 1fr !important; }
-}
-@media (min-width: 640px) and (max-width: 1023px) {
-  .events-grid { grid-template-columns: repeat(2, 1fr) !important; }
-}
+a.event-card { display: block; text-decoration: none; border-radius: 16px; outline: none; }
+a.event-card:hover { background: transparent !important; color: inherit !important; }
+.event-card-inner { transition: transform .18s ease, box-shadow .18s ease; border-radius: 16px !important; }
+a.event-card:hover .event-card-inner { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(0,0,0,.10); }
 
-/* FilterBar: scrollable on mobile */
-@media (max-width: 767px) {
-  .filter-bar {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex-wrap: nowrap !important;
-  }
-  .filter-bar::-webkit-scrollbar { display: none; }
-}
+.event-pill-link { display: block; padding: 3px 7px; border-radius: 6px; font-size: 10px; font-weight: 600; margin-bottom: 2px; text-decoration: none !important; color: #ffffff !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.event-pill-link:hover { opacity: 0.85; background: inherit !important; color: #ffffff !important; }
 
-/* Padding reduction on small screens */
-@media (max-width: 639px) {
-  .page-padding { padding: 14px 16px !important; }
-}
+.form-input:focus { border-color: #FF6B00 !important; box-shadow: 0 0 0 3px rgba(255,107,0,.12); }
 
-/* ── Event card hover lift ───────────────────────────── */
-a.event-card {
-  display: block;
-  text-decoration: none;
-  border-radius: 16px;
-  outline: none;
-}
-a.event-card:hover {
-  background: transparent !important;
-  color: inherit !important;
-}
-.event-card-inner {
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-  will-change: transform;
-  border-radius: 16px !important;
-}
-a.event-card:hover .event-card-inner {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 36px rgba(0,0,0,.10);
-  border-color: #d1d5db !important;
-}
+.cal-overflow-pill { font-size: 10px; color: #9CA3AF; font-weight: 500; padding: 1px 5px; border-radius: 4px; background: #F3F4F6; display: inline-block; }
 
-/* ── Form input focus ring ───────────────────────────── */
-.form-input:focus {
-  border-color: #FF6B00 !important;
-  box-shadow: 0 0 0 3px rgba(255,107,0,.12);
-}
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 20px; color: #9CA3AF; font-size: 13px; text-align: center; }
+.empty-state svg { opacity: .45; }
 
-/* ── Calendar cell overflow pill ────────────────────── */
-.cal-overflow-pill {
-  font-size: 10px;
-  color: #9CA3AF;
-  font-weight: 500;
-  padding: 1px 5px;
-  margin-top: 1px;
-  border-radius: 4px;
-  background: #F3F4F6;
-  display: inline-block;
-  line-height: 1.6;
-  cursor: default;
-  user-select: none;
-}
-
-/* ── Empty states ────────────────────────────────────── */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 40px 20px;
-  color: #9CA3AF;
-  font-size: 13px;
-  text-align: center;
-}
-.empty-state svg {
-  opacity: .45;
-}
-
-/* ── Shared animations ──────────────────────────────── */
 @keyframes sk-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
 @keyframes att-spin  { to { transform: rotate(360deg) } }
 @keyframes toast-in  { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }

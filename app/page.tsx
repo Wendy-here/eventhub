@@ -208,31 +208,26 @@ return(
 
 {/* RECENT EVENTS SECTION */}
 <div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Recent events</div>
-<div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
+<div className='events-grid' style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
 {recentEvents?.map((ev:any)=>(
-<a key={ev.id} href={'/events/'+ev.id} style={{textDecoration:'none'}}>
-<div style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'14px'}}>
-<div style={{fontSize:'11px',color:'#E65C00',fontWeight:500,marginBottom:'4px'}}>
+<a key={ev.id} href={'/events/'+ev.id} className='event-card'>
+<div className='event-card-inner' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'16px',overflow:'hidden'}}>
+<div style={{height:'4px',background:ev.category?['#FF6B00','#0F6E56','#534AB7','#C2410C','#15803D'][Math.abs([...ev.category].reduce((h:number,c:string)=>h*31+c.charCodeAt(0),0))%5]:'#E5E7EB'}}/>
+<div style={{padding:'14px'}}>
+<div style={{fontSize:'11px',color:'#FF6B00',fontWeight:600,marginBottom:'4px'}}>
 {new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
 </div>
-<div style={{fontSize:'13.5px',fontWeight:600,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
-{ev.event_time&&ev.timezone&&(
-<div style={{fontSize:'11px',color:'#6B7280',marginBottom:'6px',display:'flex',alignItems:'center',gap:'4px',flexWrap:'wrap' as const}}>
-<span>🕒</span>
-{allZoneTimes(ev.event_time,ev.timezone,ev.date).map(({tz,time},i,arr)=>(
-<span key={tz}>{time} ({tz==='Vietnam / Thailand'?'VN':tz==='Egypt'?'EG':'DE'}){i<arr.length-1?' | ':''}</span>
-))}
-</div>
-)}
+<div style={{fontSize:'13.5px',fontWeight:700,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
 {ev.description&&(
-<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const}}>
+<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const,marginBottom:'8px'}}>
 {ev.description}
 </div>
 )}
-<div style={{display:'flex',gap:'5px',marginTop:'8px',flexWrap:'wrap' as const}}>
-{ev.category&&<span style={{fontSize:'10px',background:'#FFE4D1',color:'#E65C00',padding:'1px 8px',borderRadius:'999px',fontWeight:500}}>{ev.category}</span>}
-{ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.entity}</span>}
-{ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'1px 8px',borderRadius:'999px'}}>{ev.office}</span>}
+<div style={{display:'flex',gap:'5px',flexWrap:'wrap' as const}}>
+{ev.category&&<span style={{fontSize:'10px',background:'#FFF3EB',color:'#993C1D',padding:'2px 9px',borderRadius:'999px',fontWeight:600}}>{ev.category}</span>}
+{ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'2px 9px',borderRadius:'999px'}}>{ev.entity}</span>}
+{ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'2px 9px',borderRadius:'999px'}}>{ev.office}</span>}
+</div>
 </div>
 </div>
 </a>

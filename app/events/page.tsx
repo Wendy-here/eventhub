@@ -92,27 +92,27 @@ return(
 
 <div style={{display:'flex',flexDirection:'column',gap:'10px',maxWidth:'800px'}}>
 {events&&events.length>0?events.map((ev:any)=>(
-<a key={ev.id} href={'/events/'+ev.id} style={{display:'block',textDecoration:'none'}}>
-<div style={{background:'#fff',border:'1px solid #E5E7EB',borderRadius:'10px',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',transition:'border-color 0.15s'}}>
-<div style={{flex:1}}>
-<div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'6px'}}>
+<a key={ev.id} href={'/events/'+ev.id} className='event-card'>
+<div className='event-card-inner' style={{background:'#fff',border:'1px solid #E5E7EB',borderRadius:'16px',overflow:'hidden'}}>
+<div style={{height:'4px',background:ev.category?['#FF6B00','#0F6E56','#534AB7','#C2410C','#15803D'][Math.abs([...(ev.category||'')].reduce((h:number,c:string)=>h*31+c.charCodeAt(0),0))%5]:'#E5E7EB'}}/>
+<div style={{padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+<div style={{flex:1,minWidth:0}}>
+<div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px',flexWrap:'wrap' as const}}>
 <div style={{fontSize:'15px',fontWeight:600,color:'#111827'}}>{ev.title}</div>
-{ev.drive_link&&<span style={{fontSize:'10px',background:'#F0FDF4',color:'#15803D',border:'1px solid #BBF7D0',padding:'1px 7px',borderRadius:'10px'}}>Drive</span>}
+{ev.drive_link&&<span style={{fontSize:'10px',background:'#F0FDF4',color:'#15803D',border:'1px solid #BBF7D0',padding:'1px 7px',borderRadius:'10px',flexShrink:0}}>Drive</span>}
 </div>
-<div style={{display:'flex',flexWrap:'wrap' as const,gap:'12px',fontSize:'12px',color:'#6B7280'}}>
+<div style={{display:'flex',flexWrap:'wrap' as const,gap:'10px',fontSize:'12px',color:'#6B7280',marginBottom:'6px'}}>
 <span>📅 {new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span>
 {ev.location&&<span>📍 {ev.location}</span>}
 </div>
-{ev.event_time&&ev.timezone&&(
-<div style={{fontSize:'11px',color:'#6B7280',marginTop:'4px',display:'flex',alignItems:'center',gap:'4px',flexWrap:'wrap' as const}}>
-<span>🕒</span>
-{allZoneTimes(ev.event_time,ev.timezone,ev.date).map(({tz,time},i,arr)=>(
-<span key={tz}>{time} ({tz==='Vietnam / Thailand'?'VN':tz==='Egypt'?'EG':'DE'}){i<arr.length-1?' | ':''}</span>
-))}
+<div style={{display:'flex',gap:'5px',flexWrap:'wrap' as const}}>
+{ev.category&&<span style={{fontSize:'10px',background:'#FFF3EB',color:'#993C1D',padding:'2px 9px',borderRadius:'999px',fontWeight:600}}>{ev.category}</span>}
+{ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'2px 9px',borderRadius:'999px'}}>{ev.entity}</span>}
+{ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'2px 9px',borderRadius:'999px'}}>{ev.office}</span>}
 </div>
-)}
 </div>
-<div style={{color:'#9CA3AF',fontSize:'18px',marginLeft:'12px'}}>›</div>
+<div style={{color:'#FF6B00',fontSize:'18px',marginLeft:'12px',flexShrink:0}}>›</div>
+</div>
 </div>
 </a>
 )):(
