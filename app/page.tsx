@@ -22,8 +22,7 @@ const firstDateStr=`${year}-${pad(month)}-01`
 const monthName=new Date(year,month-1,1).toLocaleString('default',{month:'long'})
 
 // Only fetch fields needed by the calendar pill and mobile list
-// event_time + timezone omitted until ALTER TABLE migration has been run
-const CALENDAR_FIELDS='id,title,date,location,category,entity,office,description'
+const CALENDAR_FIELDS='id,title,date,event_time,timezone,location,category,entity,office,description'
 const RECENT_FIELDS='id,title,date,event_time,timezone,description,category,entity,office'
 
 const nextMonthFirstStr=month===12?`${year+1}-01-01`:`${year}-${pad(month+1)}-01`

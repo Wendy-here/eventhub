@@ -102,7 +102,21 @@ pointerEvents:'none',
 <div style={{fontSize:'13px',fontWeight:600,color:'#1A1A1A',marginBottom:'6px',lineHeight:1.3}}>{ev.title}</div>
 <div style={{fontSize:'11.5px',color:'#6B7280',lineHeight:1.65}}>
 <div>📅 {date}</div>
-{ev.event_time&&ev.timezone&&<div>🕐 {ev.event_time} · {ev.timezone}</div>}
+{ev.event_time&&ev.timezone&&(
+<div style={{marginTop:'3px'}}>
+🕐 {(['Vietnam / Thailand','Egypt','Germany'] as const).map((tz,i)=>{
+const offsets:Record<string,number>={'Vietnam / Thailand':7,'Egypt':2,'Germany':1}
+const abbrs:Record<string,string>={'Vietnam / Thailand':'VN/BKK','Egypt':'EG','Germany':'DE'}
+const fromOff=offsets[ev.timezone!]||0
+const toOff=offsets[tz]||0
+const[h,m]=(ev.event_time!).split(':').map(Number)
+const utc=h*60+m-fromOff*60
+const local=((utc+toOff*60)%1440+1440)%1440
+const time=`${String(Math.floor(local/60)).padStart(2,'0')}:${String(local%60).padStart(2,'0')}`
+return<span key={tz} style={{marginRight:'6px',fontSize:'11px'}}><strong>{time}</strong> <span style={{color:'#9CA3AF'}}>{abbrs[tz]}</span></span>
+})}
+</div>
+)}
 {ev.location&&<div>📍 {ev.location}</div>}
 </div>
 {(ev.category||ev.entity||ev.office)&&(
@@ -135,7 +149,7 @@ onTouchEnd={onTouchEnd}
 className='event-pill-link'
 style={{display:'block',padding:'2px 6px',borderRadius:'4px',fontSize:'10.5px',fontWeight:500,marginBottom:'2px',textDecoration:'none',background:color,color:'#ffffff',whiteSpace:'nowrap' as const,overflow:'hidden',textOverflow:'ellipsis'}}
 >
-{ev.title}
+{ev.event_time ? `${ev.event_time.slice(0,5)} ${ev.title}` : ev.title}
 </Link>
 {mounted&&show&&createPortal(tooltip,document.body)}
 </div>
