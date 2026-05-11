@@ -132,7 +132,7 @@ return(
 </div>
 <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
 {days.map((cell:any,i:number)=>(
-<div key={i} style={{borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',padding:'6px',minHeight:'90px',background:cell.date===todayStr?'#FFF7F0':cell.day?'#ffffff':'#FAFAFA',opacity:cell.day?1:.4}}>
+<div key={i} style={{borderRight:"1px solid #F3F4F6",borderBottom:"1px solid #F3F4F6",padding:"6px",minHeight:"90px",overflow:"visible",position:"relative",background:cell.date===todayStr?'#FFF7F0':cell.day?'#ffffff':'#FAFAFA',opacity:cell.day?1:.4}}>
 {cell.day&&(
 <>
 <div style={{fontSize:'11.5px',fontWeight:cell.date===todayStr?700:500,color:cell.date===todayStr?'#FF6B00':'#6B7280',marginBottom:'3px'}}>{cell.day}</div>
