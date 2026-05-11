@@ -46,6 +46,7 @@ return(
 <DateTimePicker
 defaultDate={event.date||''}
 defaultTime={event.event_time||''}
+defaultEndTime={event.event_end_time||''}
 defaultTimezone={event.timezone||''}
 timezoneOptions={TIMEZONE_KEYS}
 />

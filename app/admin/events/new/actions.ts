@@ -9,6 +9,7 @@ export async function createEvent(formData: FormData): Promise<{ id: string } | 
   const title = formData.get('title') as string
   const date = formData.get('date') as string
   const event_time = formData.get('event_time') as string
+  const event_end_time = formData.get('event_end_time') as string
   const timezone = formData.get('timezone') as string
   const description = formData.get('description') as string
   const location = formData.get('location') as string
@@ -23,6 +24,7 @@ export async function createEvent(formData: FormData): Promise<{ id: string } | 
   const { data, error } = await supabase.from('events').insert({
     title, date,
     event_time: event_time || null,
+    event_end_time: event_end_time || null,
     timezone: timezone || null,
     description: description || null,
     location: location || null,

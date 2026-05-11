@@ -59,13 +59,17 @@ Back to calendar
 </div>
 {event.event_time&&event.timezone&&(
 <div style={{display:'flex',flexWrap:'wrap' as const,gap:'8px',alignItems:'center',paddingLeft:'21px'}}>
-{allZoneTimes(event.event_time,event.timezone,event.date).map(({tz,time,abbr})=>(
+{allZoneTimes(event.event_time,event.timezone,event.date).map(({tz,time,abbr})=>{
+const endTimes=event.event_end_time?allZoneTimes(event.event_end_time,event.timezone,event.date):null
+const endTime=endTimes?.find((t:any)=>t.tz===tz)
+return(
 <span key={tz} style={{display:'inline-flex',alignItems:'center',gap:'4px',fontSize:'12.5px'}}>
-<span style={{fontWeight:600,color:'#ffffff'}}>{time}</span>
+<span style={{fontWeight:600,color:'#ffffff'}}>{time}{endTime?'→'+endTime.time:''}</span>
 <span style={{fontSize:'10.5px',background:'rgba(255,107,0,.75)',color:'#ffffff',padding:'1px 6px',borderRadius:'4px',fontWeight:600}}>{abbr}</span>
 <span style={{fontSize:'11.5px',color:'rgba(255,255,255,.7)'}}>{tz}</span>
 </span>
-))}
+)
+})}
 </div>
 )}
 {event.location&&(
