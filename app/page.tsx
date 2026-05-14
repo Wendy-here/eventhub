@@ -145,7 +145,7 @@ return(
 </div>
 
 {/* ── Mobile compact view ── */}
-<div className='cal-mobile' style={{display:'none'}}>
+<div className='cal-mobile'>
 {/* Mini day grid — dots only */}
 <div style={{borderBottom:'1px solid #F3F4F6'}}>
 <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',background:'#F9FAFB',borderBottom:'1px solid #F3F4F6'}}>
