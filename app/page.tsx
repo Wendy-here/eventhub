@@ -124,7 +124,7 @@ return(
 </div>
 
 {/* ── Desktop full grid ── */}
-<div className='cal-desktop'>
+<div className='cal-desktop' style={{overflowX:'auto',WebkitOverflowScrolling:'touch' as any}}>
 <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',background:'#F9FAFB',borderBottom:'1px solid #F3F4F6'}}>
 {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d:string,i:number)=>(
 <div key={d} style={{textAlign:'center',padding:'8px 0',fontSize:'10.5px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.05em',color:i>=5?'#FF6B00':'#9CA3AF'}}>{d}</div>
@@ -132,7 +132,7 @@ return(
 </div>
 <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
 {days.map((cell:any,i:number)=>(
-<div key={i} style={{borderRight:"1px solid #F3F4F6",borderBottom:"1px solid #F3F4F6",padding:"6px",minHeight:"90px",overflow:"visible",position:"relative",background:cell.date===todayStr?'#FFF7F0':cell.day?'#ffffff':'#FAFAFA',opacity:cell.day?1:.4}}>
+<div key={i} className='cal-day-cell' style={{borderRight:"1px solid #F3F4F6",borderBottom:"1px solid #F3F4F6",padding:"6px",minHeight:"90px",overflow:"visible",position:"relative",background:cell.date===todayStr?'#FFF7F0':cell.day?'#ffffff':'#FAFAFA',opacity:cell.day?1:.4}}>
 {cell.day&&(
 <>
 <div style={{fontSize:'11.5px',fontWeight:cell.date===todayStr?700:500,color:cell.date===todayStr?'#FF6B00':'#6B7280',marginBottom:'3px'}}>{cell.day}</div>

@@ -15,8 +15,13 @@ a:hover { background: transparent !important; color: inherit !important; }
 
 @media (max-width: 767px) { .desktop-only { display: none !important; } }
 @media (min-width: 768px) { .mobile-only { display: none !important; } }
-@media (max-width: 639px) { .cal-desktop { display: none !important; } .cal-mobile { display: block !important; } }
-@media (min-width: 640px) { .cal-mobile { display: none !important; } }
+/* Always show desktop calendar grid — hide mobile list view */
+.cal-mobile { display: none !important; }
+
+/* Mobile calendar: compact cells */
+@media (max-width: 639px) {
+  .cal-day-cell { min-height: 52px !important; padding: 3px !important; }
+}
 @media (max-width: 639px) { .events-grid { grid-template-columns: 1fr !important; } }
 @media (min-width: 640px) and (max-width: 1023px) { .events-grid { grid-template-columns: repeat(2, 1fr) !important; } }
 @media (max-width: 767px) { .filter-bar { overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; } .filter-bar::-webkit-scrollbar { display: none; } }
