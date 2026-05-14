@@ -207,22 +207,25 @@ return(
 
 {/* RECENT EVENTS SECTION */}
 <div style={{fontSize:'11px',fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'.07em',color:'#6B7280',marginBottom:'12px'}}>Recent events</div>
-<div className='recent-events-grid' style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px'}}>
-{recentEvents?.map((ev:any)=>(
-<a key={ev.id} href={'/events/'+ev.id} className='event-card'>
-<div className='event-card-inner' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'16px',overflow:'hidden'}}>
-<div style={{height:'4px',background:ev.category?['#FF6B00','#0F6E56','#534AB7','#C2410C','#15803D'][Math.abs([...ev.category].reduce((h:number,c:string)=>h*31+c.charCodeAt(0),0))%5]:'#E5E7EB'}}/>
-<div style={{padding:'14px'}}>
-<div style={{fontSize:'11px',color:'#FF6B00',fontWeight:600,marginBottom:'4px'}}>
-{new Date(ev.date.slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
-</div>
-<div style={{fontSize:'13.5px',fontWeight:700,color:'#1A1A1A',marginBottom:'4px',lineHeight:1.3}}>{ev.title}</div>
+<div className='recent-events-grid' style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px',alignItems:'stretch'}}>
+{recentEvents?.map((ev:any)=>{
+const evDate=ev.date?new Date(ev.date.slice(0,10)+'T00:00:00'):null
+const dateLabel=evDate&&!isNaN(evDate.getTime())?evDate.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}):null
+const accentColors=['#FF6B00','#0F6E56','#534AB7','#C2410C','#15803D']
+const accentColor=ev.category?accentColors[Math.abs(ev.category.split('').reduce((h:number,c:string)=>h*31+c.charCodeAt(0),0))%accentColors.length]:'#E5E7EB'
+return(
+<a key={ev.id} href={'/events/'+ev.id} className='event-card' style={{height:'100%',display:'block'}}>
+<div className='event-card-inner' style={{background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'16px',overflow:'hidden',height:'100%',display:'flex',flexDirection:'column' as const}}>
+<div style={{height:'4px',background:accentColor,flexShrink:0}}/>
+<div style={{padding:'14px',flex:1,display:'flex',flexDirection:'column' as const}}>
+{dateLabel&&<div style={{fontSize:'11px',color:'#FF6B00',fontWeight:600,marginBottom:'4px'}}>{dateLabel}</div>}
+<div style={{fontSize:'13.5px',fontWeight:700,color:'#1A1A1A',marginBottom:'6px',lineHeight:1.3,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{ev.title}</div>
 {ev.description&&(
-<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const,marginBottom:'8px'}}>
+<div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5,marginBottom:'8px',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical' as const,wordBreak:'break-word'}}>
 {ev.description}
 </div>
 )}
-<div style={{display:'flex',gap:'5px',flexWrap:'wrap' as const}}>
+<div style={{display:'flex',gap:'5px',flexWrap:'wrap' as const,marginTop:'auto',paddingTop:'8px'}}>
 {ev.category&&<span style={{fontSize:'10px',background:'#FFF3EB',color:'#993C1D',padding:'2px 9px',borderRadius:'999px',fontWeight:600}}>{ev.category}</span>}
 {ev.entity&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'2px 9px',borderRadius:'999px'}}>{ev.entity}</span>}
 {ev.office&&<span style={{fontSize:'10px',background:'#F3F4F6',color:'#6B7280',padding:'2px 9px',borderRadius:'999px'}}>{ev.office}</span>}
@@ -230,7 +233,7 @@ return(
 </div>
 </div>
 </a>
-))}
+)})}
 </div>
 </div>
 </div>
