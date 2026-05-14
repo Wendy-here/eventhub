@@ -1,5 +1,5 @@
 'use client'
-import{useState,useRef,useEffect}from'react'
+import{useState,useRef,useEffect,useTransition}from'react'
 import{usePathname}from'next/navigation'
 import Image from'next/image'
 import Link from'next/link'
@@ -7,6 +7,16 @@ import{signOut,setPreviewRole}from'@/app/lib/account-actions'
 import NotificationBell from'@/app/components/NotificationBell'
 
 type Props={initials:string,name:string,email:string,isRealAdmin:boolean,isAdmin:boolean,isPreviewing:boolean}
+
+function PreviewButton({action,label,active}:{action:()=>Promise<void>,label:string,active:boolean}){
+const[pending,startTransition]=useTransition()
+return(
+<button type='button' disabled={pending} onClick={()=>startTransition(async()=>{await action()})} style={{width:'100%',padding:'12px 16px',background:active?'#FFF3EB':'none',border:'none',cursor:pending?'wait':'pointer',display:'flex',alignItems:'center',gap:'10px',fontSize:'13px',fontWeight:active?500:400,color:active?'#FF6B00':'#374151',textAlign:'left' as const,opacity:pending?.6:1}}>
+<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>
+<span>{pending?'Switching…':label}</span>
+</button>
+)
+}
 
 export default function Header({initials,name,email,isRealAdmin,isAdmin,isPreviewing}:Props){
 const[menuOpen,setMenuOpen]=useState(false)
@@ -100,19 +110,9 @@ style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'n
 {isRealAdmin&&(
 <div style={{borderBottom:'1px solid #F3F4F6'}}>
 {isPreviewing?(
-<form action={setPreviewRole.bind(null,'off')}>
-<button type='submit' style={{width:'100%',padding:'12px 16px',background:'#FFF3EB',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',fontSize:'13px',fontWeight:500,color:'#FF6B00',textAlign:'left' as const}}>
-<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>
-<span>Exit member preview</span>
-</button>
-</form>
+<PreviewButton action={setPreviewRole.bind(null,'off')} label='Exit member preview' active={true}/>
 ):(
-<form action={setPreviewRole.bind(null,'member')}>
-<button type='submit' style={{width:'100%',padding:'12px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',fontSize:'13px',color:'#374151',textAlign:'left' as const}}>
-<svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>
-<span>Preview as Member</span>
-</button>
-</form>
+<PreviewButton action={setPreviewRole.bind(null,'member')} label='Preview as Member' active={false}/>
 )}
 </div>
 )}

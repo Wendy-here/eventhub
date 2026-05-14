@@ -129,7 +129,7 @@ style={{width:'36px',height:'36px',border:'1px solid #E5E7EB',borderRadius:'10px
 </button>
 
 {open&&(
-<div style={{position:'absolute',top:'calc(100% + 8px)',right:0,width:'320px',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'16px',boxShadow:'0 8px 32px rgba(0,0,0,.12)',overflow:'hidden',zIndex:200}}>
+<div style={{position:'absolute',top:'calc(100% + 8px)',right:0,width:'min(320px, calc(100vw - 32px))',background:'#ffffff',border:'1px solid #E5E7EB',borderRadius:'16px',boxShadow:'0 8px 32px rgba(0,0,0,.12)',overflow:'hidden',zIndex:200}}>
 <div style={{padding:'14px 16px',borderBottom:'1px solid #F3F4F6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
 <span style={{fontSize:'13px',fontWeight:700,color:'#1A1A1A'}}>Notifications</span>
 {unreadCount>0&&<span style={{fontSize:'11px',background:'#FFF3EB',color:'#FF6B00',padding:'2px 8px',borderRadius:'999px',fontWeight:600}}>{unreadCount} new</span>}

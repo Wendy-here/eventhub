@@ -40,3 +40,8 @@ a.event-card:hover .event-card-inner { transform: translateY(-4px); box-shadow: 
 @keyframes sk-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
 @keyframes att-spin  { to { transform: rotate(360deg) } }
 @keyframes toast-in  { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+
+@media (max-width: 639px) { .recent-events-grid { grid-template-columns: 1fr !important; } }
+@media (min-width: 640px) and (max-width: 1023px) { .recent-events-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 639px) { .events-page-padding { padding: 14px 16px !important; } }
+@media (max-width: 639px) { .event-hero { height: 160px !important; } }

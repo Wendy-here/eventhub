@@ -81,14 +81,14 @@ return(
 <EventsFilterBar/>
 </Suspense>
 
-<div className='page-padding' style={{padding:'24px 24px 0'}}>
+<div className='page-padding events-page-padding' style={{padding:'24px 24px 0'}}>
 <h1 style={{fontSize:'21px',fontWeight:700,color:'#1A1A1A',letterSpacing:'-.3px',margin:'0 0 4px'}}>All Events</h1>
 <p style={{fontSize:'12.5px',color:'#6B7280',margin:'0 0 20px'}}>
 {total>0?`${total} events · showing ${from}–${to}`:'No events found'}
 </p>
 </div>
 
-<div className='page-padding' style={{padding:'0 24px 32px'}}>
+<div className='page-padding events-page-padding' style={{padding:'0 24px 32px'}}>
 
 <div style={{display:'flex',flexDirection:'column',gap:'10px',maxWidth:'800px'}}>
 {events&&events.length>0?events.map((ev:any)=>(
